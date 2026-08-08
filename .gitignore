@@ -1,0 +1,14 @@
+# Secrets — never commit real credentials
+.env
+
+# Dependencies & environments
+node_modules/
+venv/
+
+# Build output
+dist/
+
+# Local junk
+.DS_Store
+spotify-overlay.zip
+image.png

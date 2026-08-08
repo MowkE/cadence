@@ -1,0 +1,2242 @@
+/* ============================================================================
+   FLOATING LYRICS OVERLAY - STYLES
+   ============================================================================
+   A transparent, floating desktop overlay for music visualization and lyrics.
+   Includes three lyric styles (Cyberpunk, Ethereal, Retro) and three 
+   visualizer modes (Solid Ring, Fuzzy Orb, Particles).
+   ============================================================================ */
+
+/* ============================================================================
+   CSS VARIABLES & BASE STYLES
+   ============================================================================ */
+:root {
+    /* Dynamic color (set by JS based on album art) */
+    --dominant-color: #ff00ff;
+    --dominant-color-rgb: 255, 0, 255;
+
+    /* Base colors */
+    --bg-transparent: transparent;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-blur: 20px;
+
+    /* Cyberpunk palette */
+    --neon-pink: #ff00ff;
+    --neon-cyan: #00ffff;
+    --neon-purple: #9d00ff;
+
+    /* Ethereal palette */
+    --ethereal-white: rgba(255, 255, 255, 0.95);
+    --ethereal-blur: 2px;
+
+    /* Retro palette */
+    --terminal-green: #00ff00;
+    --terminal-bg: rgba(0, 20, 0, 0.3);
+
+    /* Layout */
+    --container-padding: 20px;
+    --visualizer-size: 200px;
+    --album-art-size: 120px;
+}
+
+/* Reset & Base */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    background: transparent !important;
+    overflow: hidden;
+    user-select: none;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Hidden utility */
+.hidden {
+    display: none !important;
+}
+
+/* ============================================================================
+   MAIN CONTAINER LAYOUT
+   ============================================================================ */
+#container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    padding: var(--container-padding);
+    gap: 20px;
+}
+
+/* Full layout floats the card in the window center with headroom so the
+   3D tilt never clips against the window edges */
+body.layout-full {
+    padding: 64px 104px;
+}
+
+/* ============================================================================
+   VISUALIZER SECTION (Left Side)
+   ============================================================================ */
+#visualizer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: var(--visualizer-size);
+    min-width: var(--visualizer-size);
+    position: relative;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Album Art Container */
+#album-art-container {
+    position: absolute;
+    width: var(--album-art-size);
+    height: var(--album-art-size);
+    border-radius: 50%;
+    overflow: hidden;
+    z-index: 10;
+    transform: translateZ(55px);
+    box-shadow:
+        var(--shadow-x, 0px) var(--shadow-y, 10px) 28px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(var(--dominant-color-rgb), 0.4),
+        inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Specular sheen that follows the parallax light source */
+#album-art-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at var(--sheen-x, 35%) var(--sheen-y, 30%),
+            rgba(255, 255, 255, 0.28),
+            rgba(255, 255, 255, 0.05) 40%,
+            rgba(255, 255, 255, 0) 60%);
+    pointer-events: none;
+    z-index: 12;
+}
+
+#album-art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+#album-art-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    font-size: 48px;
+    color: var(--text-secondary);
+}
+
+#album-art-placeholder.hidden {
+    display: none;
+}
+
+/* Visualizer Canvas Container */
+#visualizer-container {
+    position: absolute;
+    width: var(--visualizer-size);
+    height: var(--visualizer-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#visualizer-container canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Track Info */
+#track-info {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    text-align: left;
+    width: auto;
+    max-width: 300px;
+    padding: 0;
+    z-index: 1000;
+}
+
+#track-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+#artist-name {
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* ============================================================================
+   LYRICS SECTION (Right Side)
+   ============================================================================ */
+#lyrics-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
+    mask-image: linear-gradient(to bottom,
+            transparent 0%,
+            black 15%,
+            black 85%,
+            transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom,
+            transparent 0%,
+            black 15%,
+            black 85%,
+            transparent 100%);
+}
+
+#lyrics-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Base Lyric Line */
+.lyric-line {
+    padding: 8px 0;
+    opacity: 0.4;
+    transform: scale(0.95);
+    transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+    line-height: 1.4;
+}
+
+.lyric-line.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.lyric-line.passed {
+    opacity: 0.25;
+    transform: scale(0.9) translateY(-5px);
+}
+
+.lyric-line.placeholder {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+/* ============================================================================
+   LYRIC STYLE: CYBERPUNK
+   ============================================================================ */
+.lyric-style-cyberpunk .lyric-line {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--neon-pink);
+    text-shadow:
+        0 0 5px var(--neon-pink),
+        0 0 10px var(--neon-pink),
+        0 0 20px var(--neon-pink),
+        0 0 40px var(--neon-purple);
+}
+
+.lyric-style-cyberpunk .lyric-line.active {
+    color: var(--neon-cyan);
+    text-shadow:
+        0 0 5px var(--neon-cyan),
+        0 0 10px var(--neon-cyan),
+        0 0 20px var(--neon-cyan),
+        0 0 40px var(--neon-cyan),
+        0 0 60px var(--neon-pink);
+    animation: cyberpunk-flicker 0.15s infinite alternate;
+}
+
+@keyframes cyberpunk-flicker {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.95;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   LYRIC STYLE: ETHEREAL
+   ============================================================================ */
+.lyric-style-ethereal .lyric-line {
+    font-family: 'Playfair Display', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ethereal-white);
+    filter: blur(0.5px);
+    text-shadow:
+        0 0 10px rgba(255, 255, 255, 0.5),
+        0 0 30px rgba(255, 255, 255, 0.3);
+}
+
+.lyric-style-ethereal .lyric-line.active {
+    filter: blur(0);
+    color: #ffffff;
+    text-shadow:
+        0 0 15px rgba(255, 255, 255, 0.8),
+        0 0 40px rgba(255, 255, 255, 0.5),
+        0 0 60px rgba(255, 255, 255, 0.3);
+    animation: ethereal-glow 2s ease-in-out infinite;
+}
+
+@keyframes ethereal-glow {
+
+    0%,
+    100% {
+        text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 40px rgba(255, 255, 255, 0.5);
+    }
+
+    50% {
+        text-shadow: 0 0 20px rgba(255, 255, 255, 1), 0 0 50px rgba(255, 255, 255, 0.7);
+    }
+}
+
+/* ============================================================================
+   LYRIC STYLE: RETRO (Terminal)
+   ============================================================================ */
+.lyric-style-retro .lyric-line {
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    font-size: 18px;
+    color: var(--terminal-green);
+    text-shadow:
+        0 0 5px var(--terminal-green),
+        0 0 10px rgba(0, 255, 0, 0.5);
+    background: var(--terminal-bg);
+    padding: 4px 8px;
+    border-left: 2px solid var(--terminal-green);
+}
+
+.lyric-style-retro .lyric-line::before {
+    content: '> ';
+    opacity: 0.6;
+}
+
+.lyric-style-retro .lyric-line.active {
+    color: #00ff00;
+    text-shadow:
+        0 0 10px var(--terminal-green),
+        0 0 20px var(--terminal-green),
+        0 0 30px rgba(0, 255, 0, 0.8);
+    animation: terminal-blink 0.8s infinite;
+}
+
+/* Cursor rides the text span so it follows the last typed character
+   and wraps naturally with long lines */
+.lyric-style-retro .lyric-line.active .lyric-text::after {
+    content: '█';
+    animation: cursor-blink 0.5s infinite;
+    margin-left: 2px;
+}
+
+@keyframes terminal-blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.9;
+    }
+}
+
+@keyframes cursor-blink {
+
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
+}
+
+/* ============================================================================
+   SETTINGS BUTTON (Glassmorphism)
+   ============================================================================ */
+#settings-btn {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow: 0 0 10px rgba(var(--dominant-color-rgb), 0.45);
+    cursor: pointer;
+    opacity: 0.4;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+    padding: 8px;
+}
+
+#settings-btn svg {
+    width: 100%;
+    height: 100%;
+    color: #ffffff;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+#settings-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+#settings-btn:hover svg {
+    transform: rotate(45deg);
+    color: #ffffff;
+}
+
+/* Show settings button on body hover */
+body:hover #settings-btn {
+    opacity: 0.95;
+}
+
+/* Full layout insets the card for tilt headroom — keep the gear hugging
+   the card's corner instead of the far window corner */
+body.layout-full #settings-btn {
+    top: 22px;
+    right: 62px;
+}
+
+body.layout-full #settings-menu {
+    top: 66px;
+    right: 58px;
+}
+
+/* In ticker layout the gear sits inside the bar as its last item */
+body.layout-ticker #settings-btn {
+    position: static;
+    width: 28px;
+    height: 28px;
+    padding: 5px;
+    margin-left: 4px;
+    flex-shrink: 0;
+    opacity: 0.5;
+}
+
+body.layout-ticker:hover #settings-btn {
+    opacity: 1;
+}
+
+/* ============================================================================
+   SETTINGS MENU
+   ============================================================================ */
+#settings-menu {
+    position: fixed;
+    top: 60px;
+    right: 15px;
+    width: 300px;
+    max-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    /* Solid background: backdrop-filter glitches on transparent Electron windows */
+    background: rgba(16, 16, 24, 0.97);
+    z-index: 3000;
+    animation: menu-slide-in 0.3s ease;
+    overflow: hidden;
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.settings-header h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+
+.settings-header #close-settings {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.settings-header #close-settings:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--text-primary);
+}
+
+.settings-scroll {
+    overflow-y: auto;
+    padding: 14px 16px 16px;
+}
+
+.settings-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.settings-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+}
+
+@keyframes menu-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.settings-section {
+    margin-bottom: 16px;
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.settings-section h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.style-options {
+    display: flex;
+    gap: 6px;
+}
+
+.style-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+    font-size: 9px;
+}
+
+.style-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--glass-border);
+}
+
+.style-btn.active {
+    background: rgba(var(--dominant-color-rgb), 0.2);
+    border-color: var(--dominant-color);
+    color: var(--text-primary);
+}
+
+/* Style Previews */
+.style-preview {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.cyberpunk-preview {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--neon-pink);
+    text-shadow: 0 0 10px var(--neon-pink);
+    background: rgba(255, 0, 255, 0.1);
+}
+
+.ethereal-preview {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.retro-preview {
+    font-family: 'Courier Prime', monospace;
+    color: var(--terminal-green);
+    text-shadow: 0 0 10px var(--terminal-green);
+    background: var(--terminal-bg);
+}
+
+/* Visualizer Previews */
+.viz-solid,
+.viz-fuzzy,
+.viz-particles {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.viz-solid {
+    border: 4px solid var(--dominant-color);
+    box-shadow: 0 0 10px var(--dominant-color);
+}
+
+.viz-fuzzy {
+    background: radial-gradient(circle, var(--dominant-color) 0%, transparent 70%);
+    filter: blur(3px);
+}
+
+.viz-particles::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background: var(--dominant-color);
+    border-radius: 50%;
+    box-shadow:
+        10px 0 0 var(--dominant-color),
+        -10px 0 0 var(--dominant-color),
+        0 10px 0 var(--dominant-color),
+        0 -10px 0 var(--dominant-color),
+        7px 7px 0 var(--dominant-color),
+        -7px 7px 0 var(--dominant-color),
+        7px -7px 0 var(--dominant-color),
+        -7px -7px 0 var(--dominant-color);
+    transform: translate(-50%, -50%);
+}
+
+/* Close Button */
+.close-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+/* Action Button (Refresh Spotify, etc.) */
+.action-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(30, 215, 96, 0.5);
+    background: rgba(30, 215, 96, 0.15);
+    color: #1ed760;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: rgba(30, 215, 96, 0.25);
+    border-color: rgba(30, 215, 96, 0.8);
+    color: #1ed760;
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
+   LOADING OVERLAY
+   ============================================================================ */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    z-index: 2000;
+    gap: 15px;
+}
+
+#loading-overlay p {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--dominant-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================================================
+   VISUALIZER STYLE MODIFIERS
+   ============================================================================ */
+
+/* Solid Ring - Applied via canvas in JS */
+.visualizer-style-solid #visualizer-container {
+    /* Default solid ring style */
+}
+
+/* Fuzzy Orb */
+.visualizer-style-fuzzy #visualizer-container {
+    filter: blur(8px);
+}
+
+.visualizer-style-fuzzy #visualizer-container canvas {
+    opacity: 0.8;
+}
+
+/* Particles - Applied via canvas configuration in JS */
+.visualizer-style-particles #visualizer-container {
+    /* Particle rendering handled in JS */
+}
+
+/* ============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================ */
+@media (max-width: 600px) {
+    :root {
+        --visualizer-size: 150px;
+        --album-art-size: 90px;
+    }
+
+    .lyric-style-cyberpunk .lyric-line {
+        font-size: 16px;
+    }
+
+    .lyric-style-ethereal .lyric-line {
+        font-size: 18px;
+    }
+
+    .lyric-style-retro .lyric-line {
+        font-size: 14px;
+    }
+}
+
+/* ============================================================================
+   AUTO LYRIC STYLE (style + font picked per track from album art)
+   ============================================================================ */
+body.auto-font .lyric-line,
+body.auto-font #ticker-lyric {
+    font-family: var(--lyric-font, 'Inter', sans-serif) !important;
+}
+
+.auto-preview {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, rgba(255, 0, 255, 0.15), rgba(0, 255, 255, 0.15));
+    color: var(--text-primary);
+}
+
+.layout-preview {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   ALBUM-ADAPTIVE THEME (colors follow album art)
+   ============================================================================ */
+body.adaptive-theme .lyric-line {
+    color: rgba(var(--dominant-color-rgb), 0.85);
+    text-shadow:
+        0 0 6px rgba(var(--dominant-color-rgb), 0.5),
+        0 0 16px rgba(var(--dominant-color-rgb), 0.35);
+    border-left-color: var(--dominant-color);
+}
+
+body.adaptive-theme .lyric-line.active {
+    color: var(--accent-color, #ffffff);
+    text-shadow:
+        0 0 8px rgba(var(--dominant-color-rgb), 0.9),
+        0 0 20px rgba(var(--dominant-color-rgb), 0.7),
+        0 0 45px rgba(var(--dominant-color-rgb), 0.5);
+}
+
+body.adaptive-theme.lyric-style-retro .lyric-line {
+    background: rgba(var(--dominant-color-rgb), 0.08);
+}
+
+/* ============================================================================
+   TOGGLE SWITCHES (Extras section)
+   ============================================================================ */
+.toggle-row {
+    /* Anchor the hidden checkbox inside its own row so focusing it
+       never scrolls the menu */
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 2px;
+    cursor: pointer;
+}
+
+.toggle-label {
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.toggle-row input.pref-toggle {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 34px;
+    height: 20px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.15);
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    transition: transform 0.2s ease;
+}
+
+.pref-toggle:checked+.toggle-switch {
+    background: rgba(var(--dominant-color-rgb), 0.8);
+}
+
+.pref-toggle:checked+.toggle-switch::after {
+    transform: translateX(14px);
+}
+
+/* Settings footer buttons */
+.settings-footer {
+    display: flex;
+    gap: 8px;
+}
+
+.settings-footer .action-btn {
+    flex: 1;
+    padding: 9px 6px;
+}
+
+.recap-btn {
+    border-color: rgba(var(--dominant-color-rgb), 0.5);
+    background: rgba(var(--dominant-color-rgb), 0.15);
+    color: var(--text-primary);
+}
+
+.recap-btn:hover {
+    background: rgba(var(--dominant-color-rgb), 0.28);
+    border-color: rgba(var(--dominant-color-rgb), 0.8);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   FOCUS LAYOUT (previous / current / next lines only)
+   ============================================================================ */
+body.layout-focus .lyric-line {
+    display: none;
+}
+
+body.layout-focus .lyric-line.placeholder,
+body.layout-focus .lyric-line.active {
+    display: block;
+}
+
+body.layout-focus .lyric-line.focus-prev,
+body.layout-focus .lyric-line.focus-next {
+    display: block;
+    opacity: 0.35;
+    transform: scale(0.92);
+    transform-origin: left center;
+}
+
+body.layout-focus .lyric-line.active {
+    transform: scale(1.12);
+    transform-origin: left center;
+}
+
+/* ============================================================================
+   TICKER LAYOUT (compact single-line bar)
+   ============================================================================ */
+#ticker-bar {
+    display: none;
+    position: fixed;
+    left: 50%;
+    top: 15px;
+    transform: translateX(-50%);
+    align-items: center;
+    gap: 12px;
+    max-width: 740px;
+    min-width: 320px;
+    padding: 10px 18px;
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    background: rgba(15, 15, 22, 0.92);
+    z-index: 500;
+}
+
+body.layout-ticker #ticker-bar {
+    display: flex;
+}
+
+body.layout-ticker #container,
+body.layout-ticker #track-info {
+    display: none;
+}
+
+#ticker-art {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    object-fit: cover;
+    box-shadow: 0 0 12px rgba(var(--dominant-color-rgb), 0.5);
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+#ticker-meta {
+    overflow: hidden;
+}
+
+#ticker-track {
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#ticker-lyric {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 620px;
+}
+
+body.adaptive-theme #ticker-lyric {
+    color: var(--accent-color, #ffffff);
+    text-shadow: 0 0 12px rgba(var(--dominant-color-rgb), 0.6);
+}
+
+/* ============================================================================
+   TRANSLATION LINES
+   ============================================================================ */
+.lyric-translation {
+    display: none;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    font-style: normal;
+    text-transform: none;
+    letter-spacing: 0.2px;
+    line-height: 1.3;
+    margin-top: 2px;
+    opacity: 0.55;
+    color: var(--text-primary);
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+body.translation-on .lyric-translation {
+    display: block;
+}
+
+/* ============================================================================
+   FIRST-RUN SPOTIFY API SETUP
+   ============================================================================ */
+#setup-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 380px;
+    padding: 22px 24px;
+    border-radius: 16px;
+    border: 1px solid rgba(30, 215, 96, 0.4);
+    background: rgba(14, 16, 20, 0.97);
+    z-index: 3200;
+    animation: menu-slide-in 0.3s ease;
+}
+
+#setup-card h2 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.setup-steps {
+    margin: 0 0 16px 18px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.setup-em {
+    color: #1ed760;
+    font-weight: 600;
+    user-select: text;
+}
+
+#setup-card input {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: 'Inter', monospace;
+    outline: none;
+}
+
+#setup-card input:focus {
+    border-color: rgba(30, 215, 96, 0.6);
+}
+
+#setup-status {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    min-height: 14px;
+}
+
+/* ============================================================================
+   DAILY RECAP CARD
+   ============================================================================ */
+#recap-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+    background: rgba(16, 16, 24, 0.97);
+    z-index: 1500;
+    animation: menu-slide-in 0.3s ease;
+}
+
+.recap-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.recap-header #close-recap {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.recap-header #close-recap:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--text-primary);
+}
+
+.recap-stats {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.recap-stat {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 10px;
+    background: rgba(var(--dominant-color-rgb), 0.1);
+}
+
+.recap-num {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-color, var(--dominant-color));
+}
+
+.recap-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+}
+
+.recap-line {
+    font-size: 12px;
+    color: var(--text-primary);
+    padding: 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.recap-line .recap-dim {
+    color: var(--text-secondary);
+}
+
+/* ============================================================================
+   CHORUS FIREWORKS
+   ============================================================================ */
+body:not(.fireworks-off) .lyric-line.chorus.active {
+    transform: scale(1.06);
+    transform-origin: left center;
+}
+
+body:not(.fireworks-off).layout-focus .lyric-line.chorus.active {
+    transform: scale(1.22);
+}
+
+.burst-particle {
+    position: fixed;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 2000;
+    animation: burst-fly 0.9s ease-out forwards;
+}
+
+@keyframes burst-fly {
+    from {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+
+    to {
+        transform: translate(var(--dx), var(--dy)) scale(0.3);
+        opacity: 0;
+    }
+}
+
+/* ============================================================================
+   PLAYBACK CONTROLS (hover over album art)
+   ============================================================================ */
+#playback-controls {
+    position: absolute;
+    display: flex;
+    gap: 6px;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+}
+
+body:hover #playback-controls {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+body.ambient-mode #playback-controls {
+    display: none;
+}
+
+#playback-controls button {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: rgba(10, 10, 16, 0.8);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+#playback-controls button:hover {
+    background: rgba(var(--dominant-color-rgb), 0.35);
+    border-color: var(--dominant-color);
+    transform: scale(1.1);
+}
+
+/* ============================================================================
+   AMBIENT MODE (fullscreen idle lyrics)
+   ============================================================================ */
+#ambient-layer {
+    display: none;
+    position: fixed;
+    inset: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    text-align: center;
+    padding: 60px;
+    z-index: 400;
+}
+
+body.ambient-mode #ambient-layer {
+    display: flex;
+}
+
+body.ambient-mode #container,
+body.ambient-mode #track-info,
+body.ambient-mode #ticker-bar,
+body.ambient-mode #settings-btn {
+    display: none !important;
+}
+
+#ambient-art {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 0 60px rgba(var(--dominant-color-rgb), 0.6);
+    animation: ambient-drift 40s ease-in-out infinite;
+}
+
+#ambient-lyric {
+    font-size: 42px;
+    font-weight: 600;
+    line-height: 1.3;
+    max-width: 80vw;
+    color: var(--accent-color, #ffffff);
+    text-shadow:
+        0 0 20px rgba(var(--dominant-color-rgb), 0.8),
+        0 0 60px rgba(var(--dominant-color-rgb), 0.5);
+    animation: ambient-drift 40s ease-in-out infinite;
+}
+
+body.auto-font #ambient-lyric {
+    font-family: var(--lyric-font, 'Inter', sans-serif);
+}
+
+#ambient-next {
+    font-size: 20px;
+    opacity: 0.4;
+    max-width: 70vw;
+    animation: ambient-drift 40s ease-in-out infinite;
+}
+
+#ambient-track {
+    position: fixed;
+    bottom: 40px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+}
+
+/* Slow drift to avoid screen burn-in */
+@keyframes ambient-drift {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(30px, -20px);
+    }
+
+    50% {
+        transform: translate(-25px, 15px);
+    }
+
+    75% {
+        transform: translate(20px, 25px);
+    }
+}
+
+/* Lyric brightness (slider-controlled) */
+#lyrics-container,
+#ticker-lyric,
+#ambient-lyric {
+    filter: brightness(var(--lyric-brightness, 1));
+}
+
+.brightness-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.55));
+    outline: none;
+    cursor: pointer;
+}
+
+.brightness-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--dominant-color);
+    box-shadow: 0 0 8px rgba(var(--dominant-color-rgb), 0.8);
+    cursor: pointer;
+}
+
+/* Size preview chips */
+.scale-preview {
+    font-family: 'Inter', sans-serif;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   THEMED HOVER FRAMES (materialize when the cursor enters the overlay)
+   ============================================================================ */
+#frame-backdrop {
+    position: absolute;
+    inset: 4px;
+    border-radius: 18px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateZ(2px);
+    transition: opacity 0.45s ease;
+}
+
+body.layout-full:not(.tilt-off):hover #frame-backdrop {
+    opacity: 1;
+}
+
+#frame-backdrop::before,
+#frame-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* --- CYBERPUNK: floating neon billboard with a metal bezel --- */
+body.lyric-style-cyberpunk #frame-backdrop {
+    border: 10px solid transparent;
+    background:
+        linear-gradient(rgba(0, 255, 255, 0.045) 1px, transparent 1px) padding-box,
+        linear-gradient(90deg, rgba(0, 255, 255, 0.045) 1px, transparent 1px) padding-box,
+        linear-gradient(160deg, rgba(10, 14, 35, 0.94), rgba(22, 8, 42, 0.92)) padding-box,
+        linear-gradient(145deg, #00e5ff 0%, #4d66ff 28%, #9d00ff 55%, #ff00d4 78%, #00e5ff 100%) border-box;
+    background-size: 22px 22px, 22px 22px, 100% 100%, 100% 100%;
+    box-shadow:
+        0 22px 44px rgba(0, 0, 0, 0.55),
+        0 0 26px rgba(0, 229, 255, 0.45),
+        0 0 60px rgba(255, 0, 212, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+body.lyric-style-cyberpunk #frame-backdrop::before {
+    border: 2px solid rgba(0, 255, 255, 0.8);
+    border-radius: 8px;
+    box-shadow:
+        0 0 12px rgba(0, 255, 255, 0.7),
+        0 0 30px rgba(255, 0, 255, 0.35),
+        inset 0 0 18px rgba(0, 255, 255, 0.14),
+        inset 0 0 3px rgba(255, 0, 255, 0.7);
+}
+
+/* Glowing corner brackets on the bezel */
+#frame-backdrop .corner {
+    display: none;
+}
+
+body.lyric-style-cyberpunk #frame-backdrop .corner {
+    display: block;
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    z-index: 3;
+}
+
+.corner.c-tl {
+    top: 5px;
+    left: 5px;
+    border-top: 3px solid var(--neon-cyan);
+    border-left: 3px solid var(--neon-cyan);
+    filter: drop-shadow(0 0 6px var(--neon-cyan));
+}
+
+.corner.c-tr {
+    top: 5px;
+    right: 5px;
+    border-top: 3px solid var(--neon-pink);
+    border-right: 3px solid var(--neon-pink);
+    filter: drop-shadow(0 0 6px var(--neon-pink));
+}
+
+.corner.c-bl {
+    bottom: 5px;
+    left: 5px;
+    border-bottom: 3px solid var(--neon-pink);
+    border-left: 3px solid var(--neon-pink);
+    filter: drop-shadow(0 0 6px var(--neon-pink));
+}
+
+.corner.c-br {
+    bottom: 5px;
+    right: 5px;
+    border-bottom: 3px solid var(--neon-cyan);
+    border-right: 3px solid var(--neon-cyan);
+    filter: drop-shadow(0 0 6px var(--neon-cyan));
+}
+
+/* --- Extruded slab sides (the card's physical thickness) --- */
+#slab-sides {
+    position: absolute;
+    inset: 4px;
+    pointer-events: none;
+    transform-style: preserve-3d;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+}
+
+body.layout-full:not(.tilt-off).lyric-style-cyberpunk:hover #slab-sides {
+    opacity: 1;
+}
+
+.face {
+    position: absolute;
+}
+
+/* Left face — the edge that swings toward the viewer; catches the light */
+.face-left {
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 26px;
+    transform-origin: left center;
+    transform: rotateY(90deg);
+    background: linear-gradient(180deg, #4ff2ff, #2d38c8 45%, #12053d);
+    box-shadow: inset 0 0 12px rgba(0, 229, 255, 0.5);
+    filter: brightness(var(--face-light, 1));
+}
+
+.face-right {
+    left: 100%;
+    top: 2px;
+    bottom: 2px;
+    width: 26px;
+    transform-origin: left center;
+    transform: rotateY(90deg);
+    background: linear-gradient(180deg, #b429c8, #55108a 55%, #1c0533);
+    box-shadow: inset 0 0 12px rgba(255, 0, 212, 0.4);
+}
+
+.face-top {
+    left: 2px;
+    right: 2px;
+    bottom: 100%;
+    height: 26px;
+    transform-origin: center bottom;
+    transform: rotateX(90deg);
+    background: linear-gradient(90deg, #6ff5ff, #4a54e0 55%, #8a17c8);
+    box-shadow: inset 0 0 14px rgba(120, 240, 255, 0.5);
+}
+
+.face-bottom {
+    left: 2px;
+    right: 2px;
+    top: 100%;
+    height: 26px;
+    transform-origin: center top;
+    transform: rotateX(-90deg);
+    background: linear-gradient(90deg, #131d5e, #33085e 55%, #45076b);
+    box-shadow: inset 0 0 14px rgba(157, 0, 255, 0.4);
+}
+
+/* --- Engine thrusters under the billboard --- */
+#thrusters {
+    position: absolute;
+    bottom: -12px;
+    right: 16%;
+    display: flex;
+    gap: 18px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateZ(6px);
+    transition: opacity 0.45s ease;
+}
+
+body.layout-full:not(.tilt-off).lyric-style-cyberpunk:hover #thrusters {
+    opacity: 1;
+}
+
+/* Nozzle bell: horizontal light falloff fakes a 3D cylinder, with a
+   glowing exit rim at the mouth */
+#thrusters span {
+    position: relative;
+    width: 28px;
+    height: 20px;
+    border-radius: 4px 4px 14px 14px;
+    background: linear-gradient(90deg,
+            #12053d 0%,
+            #5b3df0 18%,
+            #d8d0ff 48%,
+            #7a3df0 78%,
+            #12053d 100%);
+    box-shadow:
+        inset 0 -3px 5px rgba(0, 229, 255, 0.5),
+        inset 0 2px 3px rgba(255, 255, 255, 0.5),
+        0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+#thrusters span::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    bottom: -2px;
+    height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center,
+            rgba(200, 255, 255, 0.95) 0%,
+            rgba(0, 229, 255, 0.7) 45%,
+            rgba(20, 5, 60, 0.9) 100%);
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.9);
+}
+
+#thrusters span::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: 22px;
+    height: 36px;
+    transform: translateX(-50%);
+    transform-origin: top center;
+    background:
+        radial-gradient(ellipse 40% 55% at 50% 0%, rgba(255, 255, 255, 0.95), transparent 65%),
+        radial-gradient(ellipse 65% 80% at 50% 0%, rgba(0, 229, 255, 0.8), transparent 70%),
+        radial-gradient(ellipse 100% 100% at 50% 0%, rgba(255, 0, 212, 0.55) 15%, rgba(157, 0, 255, 0.35) 50%, transparent 85%);
+    filter: blur(2px);
+    animation: thruster-flicker 0.18s ease-in-out infinite alternate;
+}
+
+@keyframes thruster-flicker {
+    from {
+        transform: translateX(-50%) scaleY(1);
+        opacity: 0.8;
+    }
+
+    to {
+        transform: translateX(-50%) scaleY(1.25);
+        opacity: 1;
+    }
+}
+
+/* Chorus hit: engines flare */
+#thrusters.flare span::after {
+    animation: thruster-flare 0.9s ease-out;
+}
+
+@keyframes thruster-flare {
+    0% {
+        transform: translateX(-50%) scaleY(1);
+    }
+
+    25% {
+        transform: translateX(-50%) scaleY(2.6) scaleX(1.35);
+        opacity: 1;
+        filter: blur(3px) brightness(1.6);
+    }
+
+    100% {
+        transform: translateX(-50%) scaleY(1);
+    }
+}
+
+body.lyric-style-cyberpunk #frame-backdrop::after {
+    background: linear-gradient(180deg,
+            transparent 0%,
+            rgba(0, 255, 255, 0.07) 45%,
+            rgba(255, 0, 255, 0.07) 55%,
+            transparent 100%);
+    background-size: 100% 250%;
+    animation: holo-sweep 5s linear infinite;
+}
+
+@keyframes holo-sweep {
+    from {
+        background-position: 0 -100%;
+    }
+
+    to {
+        background-position: 0 200%;
+    }
+}
+
+/* Dashboard sub-panels while inside */
+body.layout-full:not(.tilt-off).lyric-style-cyberpunk:hover #lyrics-section {
+    border-color: rgba(0, 255, 255, 0.28);
+    background: rgba(0, 60, 80, 0.12);
+    box-shadow: inset 0 0 24px rgba(0, 255, 255, 0.05);
+}
+
+body.layout-full:not(.tilt-off).lyric-style-cyberpunk:hover #visualizer-section {
+    border-color: rgba(255, 0, 255, 0.25);
+    background: rgba(80, 0, 80, 0.10);
+    box-shadow: inset 0 0 24px rgba(255, 0, 255, 0.05);
+}
+
+/* Inside the hologram the album color theme yields to pure neon */
+body.layout-full:not(.tilt-off).adaptive-theme.lyric-style-cyberpunk:hover .lyric-line {
+    color: var(--neon-pink);
+    text-shadow:
+        0 0 5px var(--neon-pink),
+        0 0 10px var(--neon-pink),
+        0 0 20px var(--neon-pink),
+        0 0 40px var(--neon-purple);
+}
+
+body.layout-full:not(.tilt-off).adaptive-theme.lyric-style-cyberpunk:hover .lyric-line.active {
+    color: var(--neon-cyan);
+    text-shadow:
+        0 0 5px var(--neon-cyan),
+        0 0 10px var(--neon-cyan),
+        0 0 20px var(--neon-cyan),
+        0 0 40px var(--neon-cyan),
+        0 0 60px var(--neon-pink);
+}
+
+/* --- RETRO: old-timey phosphor CRT terminal --- */
+body.lyric-style-retro #frame-backdrop {
+    border-radius: 0;
+    background: radial-gradient(ellipse at center,
+            #03200d 0%,
+            #021207 70%,
+            #000502 100%);
+    box-shadow:
+        inset 0 0 60px rgba(0, 0, 0, 0.8),
+        inset 0 0 14px rgba(0, 255, 65, 0.18),
+        0 0 24px rgba(0, 255, 65, 0.12);
+    border: 1px solid rgba(0, 255, 65, 0.3);
+}
+
+body.lyric-style-retro #frame-backdrop::before {
+    content: '● ● ●   LYRICS.SYS — TERMINAL v1.0';
+    inset: 0 0 auto 0;
+    height: 26px;
+    padding: 7px 14px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: rgba(0, 255, 65, 0.65);
+    background: rgba(0, 255, 65, 0.06);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.25);
+}
+
+body.lyric-style-retro #frame-backdrop::after {
+    background: repeating-linear-gradient(0deg,
+            rgba(0, 0, 0, 0.22) 0 1px,
+            transparent 1px 3px);
+    animation: crt-flicker 4s steps(60) infinite;
+}
+
+@keyframes crt-flicker {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    92% {
+        opacity: 1;
+    }
+
+    93% {
+        opacity: 0.75;
+    }
+
+    94% {
+        opacity: 1;
+    }
+
+    97% {
+        opacity: 0.85;
+    }
+
+    98% {
+        opacity: 1;
+    }
+}
+
+/* Terminal forces phosphor green over the album theme while inside */
+body.layout-full:not(.tilt-off).adaptive-theme.lyric-style-retro:hover .lyric-line {
+    color: var(--terminal-green);
+    text-shadow:
+        0 0 5px var(--terminal-green),
+        0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+body.layout-full:not(.tilt-off).adaptive-theme.lyric-style-retro:hover .lyric-line.active {
+    color: #00ff00;
+    text-shadow:
+        0 0 10px var(--terminal-green),
+        0 0 20px var(--terminal-green),
+        0 0 30px rgba(0, 255, 0, 0.8);
+}
+
+/* --- ETHEREAL: aurora glass pane --- */
+body.lyric-style-ethereal #frame-backdrop {
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+        inset 0 0 40px rgba(255, 255, 255, 0.06),
+        0 0 30px rgba(255, 255, 255, 0.08);
+}
+
+body.lyric-style-ethereal #frame-backdrop::before {
+    background:
+        radial-gradient(at 20% 30%, rgba(150, 120, 255, 0.28), transparent 50%),
+        radial-gradient(at 75% 20%, rgba(80, 220, 220, 0.22), transparent 55%),
+        radial-gradient(at 60% 85%, rgba(255, 150, 200, 0.22), transparent 50%);
+    filter: blur(28px);
+    animation: aurora-drift 14s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift {
+    from {
+        transform: translate(-4%, -3%) scale(1);
+        filter: blur(28px) hue-rotate(0deg);
+    }
+
+    to {
+        transform: translate(4%, 3%) scale(1.1);
+        filter: blur(32px) hue-rotate(45deg);
+    }
+}
+
+/* ============================================================================
+   3D PARALLAX SCENE (always on)
+   ============================================================================ */
+body {
+    perspective: 900px;
+}
+
+#container {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+#visualizer-section {
+    transform-style: preserve-3d;
+}
+
+/* The ring, arc, and controls share the art's depth so they always
+   project as one aligned unit */
+#visualizer-container {
+    transform: translateZ(55px);
+}
+
+#playback-controls {
+    transform: translateZ(56px);
+}
+
+#track-info {
+    transform: translateZ(40px);
+}
+
+#lyrics-section {
+    transform: translateZ(14px);
+}
+
+/* ============================================================================
+   VINYL SPIN
+   ============================================================================ */
+body.vinyl-on #album-art-container {
+    animation: vinyl-spin 40s linear infinite;
+    animation-play-state: paused;
+}
+
+body.vinyl-on.is-playing #album-art-container {
+    animation-play-state: running;
+}
+
+@keyframes vinyl-spin {
+    from {
+        transform: translateZ(55px) rotate(0deg);
+    }
+
+    to {
+        transform: translateZ(55px) rotate(360deg);
+    }
+}
+
+/* Record grooves */
+body.vinyl-on #album-art-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle,
+            rgba(0, 0, 0, 0) 0 3px,
+            rgba(0, 0, 0, 0.14) 3px 4px);
+    pointer-events: none;
+    z-index: 11;
+}
+
+/* ============================================================================
+   LINE ENTRANCE ANIMATIONS (per style)
+   ============================================================================ */
+/* Animations live on the inner text span so they never fight the
+   per-style infinite animations on the line itself */
+
+/* Cyberpunk: RGB-split glitch that snaps into focus */
+body.line-anim-on.lyric-style-cyberpunk .lyric-line.line-enter .lyric-text {
+    display: inline-block;
+    animation: glitch-in 0.4s ease-out;
+}
+
+@keyframes glitch-in {
+    0% {
+        opacity: 0;
+        transform: translateX(-8px);
+        text-shadow: -7px 0 #ff0044, 7px 0 #00ffff;
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateX(5px);
+        text-shadow: 5px 0 #ff0044, -5px 0 #00ffff;
+    }
+
+    45% {
+        transform: translateX(-3px);
+        text-shadow: -3px 0 #ff0044, 3px 0 #00ffff;
+    }
+
+    70% {
+        transform: translateX(1px);
+        text-shadow: 1px 0 #ff0044, -1px 0 #00ffff;
+    }
+
+    100% {
+        transform: none;
+    }
+}
+
+/* Ethereal: coalesce out of the mist */
+body.line-anim-on.lyric-style-ethereal .lyric-line.line-enter .lyric-text {
+    display: inline-block;
+    animation: coalesce-in 0.8s ease-out;
+}
+
+@keyframes coalesce-in {
+    from {
+        opacity: 0;
+        filter: blur(10px);
+        transform: translateY(6px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        filter: blur(0);
+        transform: none;
+    }
+}
+
+/* Retro typewriter is driven by JS (typeLine) so the cursor moves with
+   the typing — no CSS animation needed */
+
+/* ============================================================================
+   GRADIENT LYRICS
+   ============================================================================ */
+body.gradient-on .lyric-line.active .lyric-text {
+    background: linear-gradient(100deg, var(--dominant-color), var(--accent2-color, var(--accent-color, #ffffff)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: none;
+    filter: drop-shadow(0 0 10px rgba(var(--dominant-color-rgb), 0.5));
+}
+
+/* ============================================================================
+   STAR FIELD
+   ============================================================================ */
+#starfield-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* ============================================================================
+   NIGHT SHIFT (warm dim veil after dark)
+   ============================================================================ */
+#night-veil {
+    display: none;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2500;
+    background: rgba(255, 130, 40, 0.10);
+    box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.35);
+}
+
+body.night-active #night-veil {
+    display: block;
+}
+
+/* ============================================================================
+   PROGRESS ARC
+   ============================================================================ */
+#progress-arc {
+    display: none;
+    position: absolute;
+    width: 148px;
+    height: 148px;
+    transform: rotate(-90deg) translateZ(55px);
+    z-index: 10;
+    pointer-events: none;
+}
+
+body.arc-on #progress-arc {
+    display: block;
+}
+
+#progress-arc circle {
+    fill: none;
+    stroke-width: 3;
+}
+
+#progress-arc .arc-bg {
+    stroke: rgba(255, 255, 255, 0.12);
+}
+
+#progress-arc .arc-fg {
+    stroke: var(--dominant-color);
+    stroke-linecap: round;
+    stroke-dasharray: 427.26;
+    stroke-dashoffset: 427.26;
+    filter: drop-shadow(0 0 4px rgba(var(--dominant-color-rgb), 0.8));
+    transition: stroke-dashoffset 0.3s linear;
+}
+
+/* Invisible wide ring that catches scrub drags */
+#progress-arc .arc-hit {
+    stroke: rgba(255, 255, 255, 0.001);
+    stroke-width: 18;
+}
+
+body.arc-on #progress-arc .arc-hit {
+    pointer-events: stroke;
+    cursor: grab;
+}
+
+body.scrubbing,
+body.scrubbing #progress-arc .arc-hit {
+    cursor: grabbing;
+}
+
+/* Snappier arc + lyrics while scrubbing */
+body.scrubbing #progress-arc .arc-fg {
+    transition: none;
+}
+
+/* ============================================================================
+   PORTAL TRANSITIONS (track-change particle vortex)
+   ============================================================================ */
+#portal-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1800;
+}
+
+/* New content fades in beneath the particle burst */
+#container.portal-in {
+    animation: portal-in 0.9s ease-out;
+}
+
+@keyframes portal-in {
+    0% {
+        opacity: 0;
+    }
+
+    40% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* ============================================================================
+   HOLOGRAM PROJECTOR
+   ============================================================================ */
+#holo-beam,
+#holo-puck {
+    display: none;
+    pointer-events: none;
+}
+
+body.holo-on.layout-full:not(.ambient-mode) #holo-beam,
+body.holo-on.layout-full:not(.ambient-mode) #holo-puck {
+    display: block;
+}
+
+/* The emitter doubles as the hologram's power button */
+body.holo-on.layout-full:not(.ambient-mode) #holo-puck {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+/* Standby: lens pulses while the hologram is powered down */
+body.holo-collapsed #holo-puck::after {
+    animation: lens-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes lens-pulse {
+
+    0%,
+    100% {
+        box-shadow:
+            0 0 10px rgba(0, 229, 255, 1),
+            0 0 22px rgba(0, 229, 255, 0.7);
+    }
+
+    50% {
+        box-shadow:
+            0 0 18px rgba(0, 229, 255, 1),
+            0 0 40px rgba(0, 229, 255, 0.95);
+    }
+}
+
+/* Small angular emitter at the bottom of the window */
+#holo-puck {
+    position: fixed;
+    left: 50%;
+    bottom: -3px;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 10px;
+    clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
+    background: linear-gradient(180deg, #2a3140, #0d1016);
+    border-bottom: 1px solid rgba(0, 229, 255, 0.4);
+    z-index: 60;
+}
+
+/* Lens slit */
+#holo-puck::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 4px;
+    border-radius: 2px;
+    background: #bffcff;
+    box-shadow:
+        0 0 10px rgba(0, 229, 255, 1),
+        0 0 22px rgba(0, 229, 255, 0.7);
+}
+
+/* With the projector on, the card rides higher so the cone has room */
+body.layout-full.holo-on {
+    padding-bottom: 96px;
+}
+
+/* Light cone from the lens to the card's projected bottom corners.
+   The polygon is set every frame by JS so it tracks the 3D tilt. */
+#holo-beam {
+    position: fixed;
+    inset: 0;
+    clip-path: polygon(50% 100%, 50% 100%, 50% 100%);
+    background: linear-gradient(0deg,
+            rgba(140, 255, 255, 0.45) 0%,
+            rgba(0, 229, 255, 0.15) 40%,
+            rgba(0, 229, 255, 0.06) 100%);
+    filter: blur(1.5px);
+    animation: beam-flicker 3s ease-in-out infinite;
+    z-index: 40;
+}
+
+@keyframes beam-flicker {
+
+    0%,
+    100% {
+        opacity: 0.85;
+    }
+
+    45% {
+        opacity: 1;
+    }
+
+    52% {
+        opacity: 0.7;
+    }
+
+    58% {
+        opacity: 0.95;
+    }
+}
+
+/* Holographic artifacts over the card: banding drift + cyan cast + jitter */
+body.holo-on.layout-full #container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    transform: translateZ(58px);
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(0deg,
+            rgba(0, 255, 255, 0.05) 0 2px,
+            transparent 2px 7px),
+        linear-gradient(180deg, rgba(0, 229, 255, 0.045), rgba(0, 229, 255, 0.045));
+    mix-blend-mode: screen;
+    animation: holo-band 6s linear infinite, holo-glitch 7s steps(1) infinite;
+}
+
+@keyframes holo-band {
+    from {
+        background-position: 0 0, 0 0;
+    }
+
+    to {
+        background-position: 0 90px, 0 0;
+    }
+}
+
+@keyframes holo-glitch {
+
+    0%,
+    91%,
+    94%,
+    100% {
+        opacity: 1;
+        transform: translateZ(58px);
+    }
+
+    92% {
+        opacity: 0.55;
+        transform: translateZ(58px) translateX(4px);
+    }
+
+    93% {
+        opacity: 0.85;
+        transform: translateZ(58px) translateX(-3px);
+    }
+}
+
+/* ============================================================================
+   TOP-ANCHORED FOCUS LAYOUT (keeps content near the drag handle)
+   ============================================================================ */
+/* Anchor the art cluster near the top with all centers aligned:
+   art center sits at 96px, so each element's top offsets by its own size */
+body.layout-focus #album-art-container {
+    top: 36px;
+}
+
+body.layout-focus #visualizer-container {
+    top: -4px;
+}
+
+body.layout-focus #progress-arc {
+    top: 22px;
+}
+
+body.layout-focus #playback-controls {
+    top: 79px;
+}

@@ -1,0 +1,51 @@
+{
+  "name": "spotify-overlay",
+  "version": "2.0.0",
+  "description": "A floating desktop music overlay with Spotify integration and audio visualization",
+  "author": "Samahith Thellakal",
+  "license": "MIT",
+  "main": "main.js",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "colorthief": "^2.4.0",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^2.7.0",
+    "python-shell": "^5.0.0"
+  },
+  "devDependencies": {
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3"
+  },
+  "scripts": {
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "pack": "electron-builder --mac dir"
+  },
+  "build": {
+    "appId": "com.samahith.lyricsoverlay",
+    "productName": "Lyrics Overlay",
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "python/spotify_client.py",
+        "to": "python/spotify_client.py"
+      },
+      {
+        "from": "python/requirements.txt",
+        "to": "python/requirements.txt"
+      },
+      {
+        "from": "venv",
+        "to": "python/venv"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.music",
+      "target": "dir",
+      "icon": "build/icon.icns"
+    }
+  }
+}

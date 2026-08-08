@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co;">
+    <title>Lyrics Overlay</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Playfair+Display:ital,wght@0,400;1,400&family=Courier+Prime&family=Inter:wght@400;600&family=Audiowide&family=Rajdhani:wght@600&family=Russo+One&family=Exo+2:wght@600&family=Oxanium:wght@600&family=Chakra+Petch:wght@600&family=Michroma&family=Teko:wght@600&family=Saira+Condensed:wght@600&family=Cormorant+Garamond&family=EB+Garamond&family=Crimson+Text&family=Libre+Baskerville&family=Marcellus&family=Italiana&family=Great+Vibes&family=Parisienne&family=Dancing+Script&family=VT323&family=Press+Start+2P&family=Space+Mono&family=IBM+Plex+Mono&family=JetBrains+Mono&family=Share+Tech+Mono&family=Silkscreen&family=DotGothic16&family=Major+Mono+Display&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="lyric-style-cyberpunk visualizer-style-solid layout-full">
+
+    <!-- Star Field (behind everything) -->
+    <canvas id="starfield-canvas"></canvas>
+
+    <!-- Night Shift warm veil (above everything) -->
+    <div id="night-veil"></div>
+
+    <!-- Main Container -->
+    <div id="container">
+
+        <!-- Themed frame that materializes on hover -->
+        <div id="frame-backdrop">
+            <i class="corner c-tl"></i>
+            <i class="corner c-tr"></i>
+            <i class="corner c-bl"></i>
+            <i class="corner c-br"></i>
+        </div>
+
+        <!-- Extruded slab sides: the thickness that makes the card a 3D object -->
+        <div id="slab-sides">
+            <i class="face face-left"></i>
+            <i class="face face-right"></i>
+            <i class="face face-top"></i>
+            <i class="face face-bottom"></i>
+        </div>
+
+        <!-- Engine thrusters under the billboard (cyberpunk frame) -->
+        <div id="thrusters"><span></span><span></span><span></span></div>
+
+        <!-- Left: Visualizer Section -->
+        <div id="visualizer-section">
+            <!-- Album Art (Circle) -->
+            <div id="album-art-container">
+                <img id="album-art" src="" alt="Album Art">
+                <div id="album-art-placeholder">
+                    <span>♪</span>
+                </div>
+            </div>
+
+            <!-- Progress Arc (wraps the album art) -->
+            <svg id="progress-arc" viewBox="0 0 148 148">
+                <circle class="arc-bg" cx="74" cy="74" r="68"></circle>
+                <circle class="arc-fg" cx="74" cy="74" r="68"></circle>
+                <circle class="arc-hit" cx="74" cy="74" r="68"></circle>
+            </svg>
+
+            <!-- Visualizer Ring (Canvas) -->
+            <div id="visualizer-container"></div>
+
+            <!-- Playback Controls (hover over album art) -->
+            <div id="playback-controls">
+                <button id="pb-prev" title="Previous">⏮</button>
+                <button id="pb-toggle" title="Play / Pause">⏸</button>
+                <button id="pb-next" title="Next">⏭</button>
+            </div>
+
+            <!-- Track Info (Below visualizer) -->
+            <div id="track-info">
+                <div id="track-name">No track playing</div>
+                <div id="artist-name">Connect to Spotify</div>
+            </div>
+        </div>
+
+        <!-- Right: Lyrics Section -->
+        <div id="lyrics-section">
+            <div id="lyrics-container">
+                <div class="lyric-line placeholder">
+                    ♪ Waiting for music... ♪
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Settings Button (Glassmorphism) -->
+    <button id="settings-btn" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+                d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
+                stroke="currentColor" stroke-width="2" />
+            <path
+                d="M19.4 15C19.1277 15.6171 19.2583 16.3378 19.73 16.82L19.79 16.88C20.1656 17.2551 20.3766 17.7642 20.3766 18.295C20.3766 18.8258 20.1656 19.3349 19.79 19.71C19.4149 20.0856 18.9058 20.2966 18.375 20.2966C17.8442 20.2966 17.3351 20.0856 16.96 19.71L16.9 19.65C16.4178 19.1783 15.6971 19.0477 15.08 19.32C14.4755 19.5791 14.0826 20.1724 14.08 20.83V21C14.08 22.1046 13.1846 23 12.08 23C10.9754 23 10.08 22.1046 10.08 21V20.91C10.0642 20.2327 9.63587 19.6339 9 19.4C8.38291 19.1277 7.66219 19.2583 7.18 19.73L7.12 19.79C6.74486 20.1656 6.23582 20.3766 5.705 20.3766C5.17418 20.3766 4.66514 20.1656 4.29 19.79C3.91445 19.4149 3.70343 18.9058 3.70343 18.375C3.70343 17.8442 3.91445 17.3351 4.29 16.96L4.35 16.9C4.82167 16.4178 4.95233 15.6971 4.68 15.08C4.42093 14.4755 3.82764 14.0826 3.17 14.08H3C1.89543 14.08 1 13.1846 1 12.08C1 10.9754 1.89543 10.08 3 10.08H3.09C3.76733 10.0642 4.36613 9.63587 4.6 9C4.87233 8.38291 4.74167 7.66219 4.27 7.18L4.21 7.12C3.83445 6.74486 3.62343 6.23582 3.62343 5.705C3.62343 5.17418 3.83445 4.66514 4.21 4.29C4.58514 3.91445 5.09418 3.70343 5.625 3.70343C6.15582 3.70343 6.66486 3.91445 7.04 4.29L7.1 4.35C7.58219 4.82167 8.30291 4.95233 8.92 4.68H9C9.60447 4.42093 9.99738 3.82764 10 3.17V3C10 1.89543 10.8954 1 12 1C13.1046 1 14 1.89543 14 3V3.09C14.0026 3.74764 14.3955 4.34093 15 4.6C15.6171 4.87233 16.3378 4.74167 16.82 4.27L16.88 4.21C17.2551 3.83445 17.7642 3.62343 18.295 3.62343C18.8258 3.62343 19.3349 3.83445 19.71 4.21C20.0856 4.58514 20.2966 5.09418 20.2966 5.625C20.2966 6.15582 20.0856 6.66486 19.71 7.04L19.65 7.1C19.1783 7.58219 19.0477 8.30291 19.32 8.92V9C19.5791 9.60447 20.1724 9.99738 20.83 10H21C22.1046 10 23 10.8954 23 12C23 13.1046 22.1046 14 21 14H20.91C20.2524 14.0026 19.6591 14.3955 19.4 15Z"
+                stroke="currentColor" stroke-width="2" />
+        </svg>
+    </button>
+
+    <!-- Settings Menu (Hidden by default) -->
+    <div id="settings-menu" class="hidden">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button id="close-settings" title="Close">✕</button>
+        </div>
+
+        <div class="settings-scroll">
+            <div class="settings-section">
+                <h3>Lyric Style</h3>
+                <div class="style-options">
+                    <button class="style-btn" data-style="lyric" data-value="auto">
+                        <span class="style-preview auto-preview">A✦</span>
+                        <span>Auto</span>
+                    </button>
+                    <button class="style-btn active" data-style="lyric" data-value="cyberpunk">
+                        <span class="style-preview cyberpunk-preview">Aa</span>
+                        <span>Cyberpunk</span>
+                    </button>
+                    <button class="style-btn" data-style="lyric" data-value="ethereal">
+                        <span class="style-preview ethereal-preview">Aa</span>
+                        <span>Ethereal</span>
+                    </button>
+                    <button class="style-btn" data-style="lyric" data-value="retro">
+                        <span class="style-preview retro-preview">Aa</span>
+                        <span>Retro</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Lyric Brightness</h3>
+                <input type="range" id="brightness-slider" class="brightness-slider" min="30" max="150" value="100">
+            </div>
+
+            <div class="settings-section">
+                <h3>Layout</h3>
+                <div class="style-options">
+                    <button class="style-btn active" data-style="layout" data-value="full">
+                        <span class="style-preview layout-preview">☰</span>
+                        <span>Full</span>
+                    </button>
+                    <button class="style-btn" data-style="layout" data-value="focus">
+                        <span class="style-preview layout-preview">▣</span>
+                        <span>Focus</span>
+                    </button>
+                    <button class="style-btn" data-style="layout" data-value="ticker">
+                        <span class="style-preview layout-preview">▬</span>
+                        <span>Ticker</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Size</h3>
+                <div class="style-options">
+                    <button class="style-btn" data-style="scale" data-value="small">
+                        <span class="style-preview scale-preview">S</span>
+                        <span>Small</span>
+                    </button>
+                    <button class="style-btn active" data-style="scale" data-value="medium">
+                        <span class="style-preview scale-preview">M</span>
+                        <span>Medium</span>
+                    </button>
+                    <button class="style-btn" data-style="scale" data-value="large">
+                        <span class="style-preview scale-preview">L</span>
+                        <span>Large</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Visualizer</h3>
+                <div class="style-options">
+                    <button class="style-btn active" data-style="visualizer" data-value="solid">
+                        <span class="style-preview viz-solid"></span>
+                        <span>Solid Ring</span>
+                    </button>
+                    <button class="style-btn" data-style="visualizer" data-value="fuzzy">
+                        <span class="style-preview viz-fuzzy"></span>
+                        <span>Fuzzy Orb</span>
+                    </button>
+                    <button class="style-btn" data-style="visualizer" data-value="particles">
+                        <span class="style-preview viz-particles"></span>
+                        <span>Particles</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Effects</h3>
+                <label class="toggle-row">
+                    <span class="toggle-label">3D tilt</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="tiltOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Vinyl spin</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="vinylOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Line animations</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="lineAnimOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Gradient lyrics</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="gradientOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Star field</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="starsOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Night shift</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="nightShiftOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Progress arc</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="arcOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Portal transitions</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="portalOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Hologram projector</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="hologramOn">
+                    <span class="toggle-switch"></span>
+                </label>
+            </div>
+
+            <div class="settings-section">
+                <h3>Extras</h3>
+                <label class="toggle-row">
+                    <span class="toggle-label">Album color theme</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="adaptiveTheme">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Translate lyrics</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="translationOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Chorus fireworks</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="fireworksOn">
+                    <span class="toggle-switch"></span>
+                </label>
+                <label class="toggle-row">
+                    <span class="toggle-label">Daily recap</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="dailyRecap">
+                    <span class="toggle-switch"></span>
+                </label>
+            </div>
+
+            <div class="settings-footer">
+                <button id="refresh-spotify-btn" class="action-btn">🔄 Spotify</button>
+                <button id="show-recap-btn" class="action-btn recap-btn">📊 Recap</button>
+                <button id="show-setup-btn" class="action-btn recap-btn" title="Spotify API keys">🔑</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ambient Mode Layer (fills the screen when idle + playing) -->
+    <div id="ambient-layer">
+        <img id="ambient-art" src="" alt="">
+        <div id="ambient-lyric">♪</div>
+        <div id="ambient-next"></div>
+        <div id="ambient-track"></div>
+    </div>
+
+    <!-- Mini Ticker Bar (shown in ticker layout) -->
+    <div id="ticker-bar">
+        <img id="ticker-art" src="" alt="">
+        <div id="ticker-meta">
+            <div id="ticker-track">Nothing playing</div>
+            <div id="ticker-lyric">♪</div>
+        </div>
+    </div>
+
+    <!-- First-run Spotify API setup -->
+    <div id="setup-card" class="hidden">
+        <h2>🎧 Connect your Spotify</h2>
+        <ol class="setup-steps">
+            <li>Go to <span class="setup-em">developer.spotify.com/dashboard</span> and create an app</li>
+            <li>Add <span class="setup-em">http://127.0.0.1:8888/callback</span> as the Redirect URI</li>
+            <li>Paste your app's keys below — they stay on this computer</li>
+        </ol>
+        <input id="setup-client-id" type="text" placeholder="Client ID" spellcheck="false" autocomplete="off">
+        <input id="setup-client-secret" type="password" placeholder="Client Secret" spellcheck="false" autocomplete="off">
+        <button id="setup-save" class="action-btn">Connect Spotify</button>
+        <div id="setup-status"></div>
+    </div>
+
+    <!-- Daily Recap Card -->
+    <div id="recap-card" class="hidden">
+        <div class="recap-header">
+            <span>📊 Today's Recap</span>
+            <button id="close-recap" title="Close">✕</button>
+        </div>
+        <div class="recap-stats">
+            <div class="recap-stat">
+                <div class="recap-num" id="recap-time">–</div>
+                <div class="recap-label">listened</div>
+            </div>
+            <div class="recap-stat">
+                <div class="recap-num" id="recap-plays">–</div>
+                <div class="recap-label">tracks played</div>
+            </div>
+            <div class="recap-stat">
+                <div class="recap-num" id="recap-unique">–</div>
+                <div class="recap-label">unique tracks</div>
+            </div>
+        </div>
+        <div class="recap-line" id="recap-top-artist"></div>
+        <div class="recap-line" id="recap-top-track"></div>
+    </div>
+
+    <!-- Hologram projector (beam behind content, puck above) -->
+    <div id="holo-beam"></div>
+    <div id="holo-puck"></div>
+
+    <!-- Portal transition particle canvas -->
+    <canvas id="portal-canvas"></canvas>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>Connecting to Spotify...</p>
+    </div>
+
+    <!-- Main Renderer Script -->
+    <script src="renderer.js"></script>
+</body>
+
+</html>

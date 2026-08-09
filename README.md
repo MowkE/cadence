@@ -18,7 +18,7 @@
 - **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, daily listening recap, ambient screensaver mode when idle
 
 ## Requirements
-
+- oh also i think you need spotify premium for the api keys
 - macOS (Apple Silicon or Intel)
 - [Node.js](https://nodejs.org) 18 or newer
 - Python 3.10 or newer

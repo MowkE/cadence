@@ -7,6 +7,11 @@
 <p align="center">A floating, click-through desktop overlay for Spotify — synced karaoke lyrics, an audio-reactive visualizer, album-adaptive theming, a 3D tilt with holographic frames, and a pile of toggleable effects. Built with Electron + Python.</p>
 
 <p align="center">
+  <img src="assets/screenshots/cyberpunk.png" alt="Cyberpunk style with neon billboard frame">
+  <em align="center">Cyberpunk — neon billboard with thrusters</em>
+</p>
+
+<p align="center">
   <img src="assets/screenshots/retro.png" alt="Retro terminal style floating over the desktop">
   <em align="center">Retro — CRT terminal with typewriter lyrics</em>
 </p>

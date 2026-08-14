@@ -6,6 +6,21 @@
 
 <p align="center">A floating, click-through desktop overlay for Spotify — synced karaoke lyrics, an audio-reactive visualizer, album-adaptive theming, a 3D tilt with holographic frames, and a pile of toggleable effects. Built with Electron + Python.</p>
 
+<p align="center">
+  <img src="assets/screenshots/retro.png" alt="Retro terminal style floating over the desktop">
+  <em align="center">Retro — CRT terminal with typewriter lyrics</em>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/ethereal.png" alt="Ethereal style with aurora glass frame">
+  <em align="center">Ethereal — aurora glass, album-adaptive fonts and colors</em>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/hologram.png" alt="Hologram projector mode">
+  <em align="center">Hologram projector — the overlay beams out of a lens at the bottom of the screen</em>
+</p>
+
 ## Features
 
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback

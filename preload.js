@@ -53,6 +53,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Preferences
     savePreferences: (prefs) => ipcRenderer.invoke('save-preferences', prefs),
 
+    // Fired when the browser sign-in finishes ({ success, error })
+    onSpotifyAuth: (callback) => {
+        ipcRenderer.on('spotify-auth', (event, result) => callback(result));
+    },
+
+    // The tray menu / a cadence:// link asked for the settings panel
+    onOpenSettings: (callback) => {
+        ipcRenderer.on('open-settings', () => callback());
+    },
+
+    // Listen along (share a code, follow a friend's lyrics)
+    listenAlong: {
+        getStatus: () => ipcRenderer.invoke('listen-along-status'),
+        host: () => ipcRenderer.invoke('listen-along-host'),
+        join: (code) => ipcRenderer.invoke('listen-along-join', code),
+        leave: () => ipcRenderer.invoke('listen-along-leave'),
+        setMirror: (on) => ipcRenderer.invoke('listen-along-mirror', on),
+        onStatus: (callback) => {
+            ipcRenderer.on('listen-along-status', (event, status) => callback(status));
+        }
+    },
+
+    // Clipboard + browser
+    copyText: (text) => ipcRenderer.invoke('copy-text', text),
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
     // Event listeners for updates from main process
     onTrackUpdate: (callback) => {
         ipcRenderer.on('track-update', (event, data) => callback(data));

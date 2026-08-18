@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co;">
-    <title>Lyrics Overlay</title>
+    <title>Cadence</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -268,6 +268,45 @@
                 </label>
             </div>
 
+            <div class="settings-section" id="listen-along-section">
+                <h3>Listen along</h3>
+
+                <!-- Idle: start a session or join one -->
+                <div id="la-idle">
+                    <button id="la-host-btn" class="action-btn la-btn">🎧 Start a session</button>
+                    <div class="la-join-row">
+                        <input id="la-code-input" type="text" placeholder="Paste a code or link" spellcheck="false" autocomplete="off">
+                        <button id="la-join-btn" class="action-btn recap-btn">Join</button>
+                    </div>
+                    <div class="la-hint">Friends see your lyrics live — and can play along on their own Spotify.</div>
+                </div>
+
+                <!-- Hosting -->
+                <div id="la-hosting" class="hidden">
+                    <div class="la-code" id="la-code" title="Click to copy">ABCD-EFGH</div>
+                    <div class="la-hint" id="la-listeners">Share the code or link with friends</div>
+                    <div class="la-actions">
+                        <button id="la-copy-btn" class="action-btn la-btn">Copy link</button>
+                        <button id="la-end-btn" class="action-btn recap-btn">End</button>
+                    </div>
+                </div>
+
+                <!-- Listening -->
+                <div id="la-guest" class="hidden">
+                    <div class="la-with" id="la-with">Listening with a friend</div>
+                    <div class="la-hint" id="la-guest-track"></div>
+                    <label class="toggle-row">
+                        <span class="toggle-label">Play on my Spotify too</span>
+                        <input type="checkbox" class="pref-toggle" data-pref="laMirror">
+                        <span class="toggle-switch"></span>
+                    </label>
+                    <div class="la-hint la-warn" id="la-mirror-note"></div>
+                    <button id="la-leave-btn" class="action-btn recap-btn">Leave session</button>
+                </div>
+
+                <div class="la-hint la-msg" id="la-msg"></div>
+            </div>
+
             <div class="settings-footer">
                 <button id="refresh-spotify-btn" class="action-btn">🔄 Spotify</button>
                 <button id="show-recap-btn" class="action-btn recap-btn">📊 Recap</button>
@@ -304,6 +343,7 @@
         <input id="setup-client-id" type="text" placeholder="Client ID" spellcheck="false" autocomplete="off">
         <input id="setup-client-secret" type="password" placeholder="Client Secret" spellcheck="false" autocomplete="off">
         <button id="setup-save" class="action-btn">Connect Spotify</button>
+        <button id="setup-skip" class="setup-skip">Skip for now — I just want to listen along with a friend</button>
         <div id="setup-status"></div>
     </div>
 

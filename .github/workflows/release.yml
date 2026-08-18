@@ -1,0 +1,79 @@
+# Builds the Mac (arm64 + Intel) and Windows installers and attaches them to a
+# GitHub Release whenever a version tag is pushed:
+#
+#   git tag v2.1.0 && git push origin v2.1.0
+#
+# The README links to .../releases/latest/download/<file>, so the artifact
+# names below must stay stable.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            args: --mac
+          - name: Windows
+            os: windows-latest
+            args: --win
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installers
+        run: npx electron-builder ${{ matrix.args }} --publish never
+        env:
+          # No signing certificates: don't try to find one on the runner
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: List output
+        shell: bash
+        run: ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cadence-${{ matrix.name }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

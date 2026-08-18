@@ -1101,6 +1101,152 @@ body.translation-on .lyric-translation {
     min-height: 14px;
 }
 
+.setup-skip {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 6px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.setup-skip:hover {
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   LISTEN ALONG (settings section)
+   ============================================================================ */
+.la-btn {
+    border-color: rgba(var(--dominant-color-rgb), 0.6);
+    background: rgba(var(--dominant-color-rgb), 0.22);
+    color: var(--text-primary);
+}
+
+.la-btn:hover {
+    background: rgba(var(--dominant-color-rgb), 0.35);
+    border-color: rgba(var(--dominant-color-rgb), 0.9);
+    color: var(--text-primary);
+}
+
+.la-join-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.la-join-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: 'Inter', monospace;
+    outline: none;
+}
+
+.la-join-row input:focus {
+    border-color: rgba(var(--dominant-color-rgb), 0.7);
+}
+
+.la-join-row .action-btn {
+    width: auto;
+    padding: 8px 14px;
+}
+
+.la-hint {
+    margin-top: 8px;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.la-hint:empty {
+    display: none;
+}
+
+.la-warn {
+    color: #ffb86b;
+}
+
+.la-msg {
+    color: rgba(var(--dominant-color-rgb), 0.95);
+}
+
+.la-code {
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px dashed rgba(var(--dominant-color-rgb), 0.6);
+    background: rgba(var(--dominant-color-rgb), 0.12);
+    color: var(--text-primary);
+    font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 3px;
+    text-align: center;
+    cursor: pointer;
+    user-select: text;
+    transition: background 0.2s ease;
+}
+
+.la-code:hover {
+    background: rgba(var(--dominant-color-rgb), 0.22);
+}
+
+.la-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.la-actions .action-btn {
+    flex: 1;
+    padding: 8px 6px;
+}
+
+.la-with {
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.la-with .la-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #1ed760;
+    vertical-align: middle;
+    box-shadow: 0 0 8px rgba(30, 215, 96, 0.8);
+}
+
+.la-with .la-dot.off {
+    background: #888;
+    box-shadow: none;
+}
+
+#la-guest .toggle-row {
+    margin-top: 4px;
+}
+
+#la-guest .action-btn {
+    margin-top: 8px;
+}
+
+/* Guests follow the host: the play/pause/skip controls and the scrub ring
+   would only drive their own Spotify, so keep them out of the way */
+body.listen-along-guest #playback-controls,
+body.listen-along-guest #progress-arc .arc-hit {
+    display: none !important;
+}
+
 /* ============================================================================
    DAILY RECAP CARD
    ============================================================================ */

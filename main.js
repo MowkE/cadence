@@ -1,49 +1,106 @@
 /**
- * Floating Lyrics Overlay - Main Process
- * 
- * This is the Electron main process that handles:
- * - Window creation and configuration (transparent, frameless, always-on-top)
- * - Click-through behavior with settings area exception
- * - Python-Electron communication for Spotify data
- * - Genius lyrics scraping fallback
+ * Cadence — Electron main process
+ *
+ * - Transparent, frameless, always-on-top, click-through overlay window
+ * - Spotify auth + polling + playback control (lib/spotify.js, pure Node)
+ * - Synced lyrics from LRCLIB (lib/lyrics.js), Genius as fallback
+ * - Listen along: share a code/link, friends follow your lyrics (lib/listen-along.js)
+ * - Tray icon (the only way to quit on Windows), cadence:// deep links
  */
 
-const { app, BrowserWindow, ipcMain, screen, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { PythonShell } = require('python-shell');
-const fetch = require('node-fetch');
+const os = require('os');
 const cheerio = require('cheerio');
+
+const { createSpotifyClient } = require('./lib/spotify');
+const { getSyncedLyrics } = require('./lib/lyrics');
+const { createListenAlong } = require('./lib/listen-along');
 
 // .env is a development convenience only — user credentials live in a
 // per-user config file (see loadCredentials)
-const dotenv = require('dotenv');
 if (!app.isPackaged) {
-    dotenv.config();
+    try { require('dotenv').config(); } catch (e) { /* optional */ }
 }
 
 // ============================================================================
-// PYTHON PATH RESOLUTION (Development vs Packaged)
+// SINGLE INSTANCE + cadence:// PROTOCOL
 // ============================================================================
-function getPythonPath() {
-    if (app.isPackaged) {
-        // In packaged app, try bundled venv first, fallback to system python
-        const bundledPython = path.join(process.resourcesPath, 'python', 'venv', 'bin', 'python3');
-        if (fs.existsSync(bundledPython)) {
-            return bundledPython;
+const PROTOCOL = 'cadence';
+let pendingDeepLink = null;
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on('second-instance', (event, argv) => {
+        // Windows/Linux: a second launch (e.g. clicking a cadence:// link) hands us its argv
+        const link = argv.find(a => typeof a === 'string' && a.startsWith(`${PROTOCOL}://`));
+        if (link) handleDeepLink(link);
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
         }
-        // Fallback to system Python
-        return 'python3';
-    }
-    // Development mode - use local venv
-    return path.join(__dirname, 'python', 'venv', 'bin', 'python3');
+    });
 }
 
-function getScriptPath() {
-    if (app.isPackaged) {
-        return path.join(process.resourcesPath, 'python');
+if (process.defaultApp) {
+    // Running from source (`electron .`): register with the script path so the
+    // OS can hand links back to this exact app
+    if (process.argv.length >= 2) {
+        app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [path.resolve(process.argv[1])]);
     }
-    return path.join(__dirname, 'python');
+} else {
+    app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+// macOS delivers links through open-url (also before ready)
+app.on('open-url', (event, url) => {
+    event.preventDefault();
+    handleDeepLink(url);
+});
+
+function handleDeepLink(url) {
+    if (!url) return;
+    if (!listenAlong || !mainWindow) {
+        pendingDeepLink = url;
+        return;
+    }
+    const code = listenAlong.parseCode(url);
+    if (!code) return;
+    console.log('Joining listen-along session from link');
+    listenAlong.join(code).then(() => {
+        if (mainWindow) mainWindow.webContents.send('open-settings');
+    });
+}
+
+// ============================================================================
+// PATHS + SMALL SETTINGS FILE
+// ============================================================================
+const userDataPath = () => app.getPath('userData');
+const credentialsPath = () => path.join(userDataPath(), 'spotify-credentials.json');
+const tokenPath = () => path.join(userDataPath(), 'spotify-tokens.json');
+const settingsPath = () => path.join(userDataPath(), 'settings.json');
+const statsPath = () => path.join(userDataPath(), 'daily-stats.json');
+
+// Where the old Python helper (spotipy) cached tokens — imported once so
+// nobody has to re-approve the app after the upgrade
+function legacyTokenCaches() {
+    const home = os.homedir();
+    return [
+        path.join(home, 'Library', 'Caches', 'LyricsOverlay', '.spotify_cache'),
+        path.join(process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), 'LyricsOverlay', 'LyricsOverlay', 'Cache', '.spotify_cache'),
+        path.join(process.env.XDG_CACHE_HOME || path.join(home, '.cache'), 'LyricsOverlay', '.spotify_cache')
+    ];
+}
+
+let settings = { relay: null };
+function loadSettings() {
+    try {
+        settings = { ...settings, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) };
+    } catch (e) { /* defaults */ }
+    if (process.env.CADENCE_RELAY) settings.relay = process.env.CADENCE_RELAY;
 }
 
 // ============================================================================
@@ -51,8 +108,6 @@ function getScriptPath() {
 // ============================================================================
 let SPOTIFY_CLIENT_ID = '';
 let SPOTIFY_CLIENT_SECRET = '';
-
-const credentialsPath = () => path.join(app.getPath('userData'), 'spotify-credentials.json');
 
 function loadCredentials() {
     try {
@@ -76,8 +131,8 @@ function loadCredentials() {
 
 function writeCredentials(clientId, clientSecret) {
     try {
-        fs.mkdirSync(app.getPath('userData'), { recursive: true });
-        fs.writeFileSync(credentialsPath(), JSON.stringify({ clientId, clientSecret }));
+        fs.mkdirSync(userDataPath(), { recursive: true });
+        fs.writeFileSync(credentialsPath(), JSON.stringify({ clientId, clientSecret }), { mode: 0o600 });
     } catch (e) {
         console.error('Could not save credentials:', e.message);
     }
@@ -87,7 +142,43 @@ function credentialsConfigured() {
     return Boolean(SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET);
 }
 
-ipcMain.handle('get-credentials-status', () => ({ configured: credentialsConfigured() }));
+// ============================================================================
+// SPOTIFY + LISTEN ALONG CLIENTS
+// ============================================================================
+let spotify = null;
+let listenAlong = null;
+
+function createClients() {
+    spotify = createSpotifyClient({
+        tokenFile: tokenPath(),
+        getCredentials: () => ({ clientId: SPOTIFY_CLIENT_ID, clientSecret: SPOTIFY_CLIENT_SECRET }),
+        openExternal: (url) => shell.openExternal(url),
+        legacyCacheFiles: legacyTokenCaches()
+    });
+
+    spotify.onAuth((result) => {
+        console.log('Spotify auth finished:', result.success ? 'connected' : result.error);
+        if (mainWindow) mainWindow.webContents.send('spotify-auth', result);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            // Bring the overlay back to the front after the browser dance
+            mainWindow.show();
+        }
+    });
+
+    listenAlong = createListenAlong({
+        getRelayBase: () => settings.relay,
+        spotify,
+        onStatus: (status) => {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('listen-along-status', status);
+            updateTrayMenu();
+        }
+    });
+}
+
+ipcMain.handle('get-credentials-status', () => ({
+    configured: credentialsConfigured(),
+    connected: spotify ? spotify.isConnected() : false
+}));
 
 ipcMain.handle('save-credentials', async (event, { clientId, clientSecret }) => {
     SPOTIFY_CLIENT_ID = String(clientId || '').trim();
@@ -99,136 +190,39 @@ ipcMain.handle('save-credentials', async (event, { clientId, clientSecret }) => 
 
     writeCredentials(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET);
 
-    // Drop any auth cache from previous credentials, then kick off OAuth
+    // Drop any tokens from previous credentials, then kick off OAuth
     // (opens the user's browser for Spotify approval)
-    return new Promise((resolve) => {
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args: ['--action', 'clear_cache']
-        };
-
-        PythonShell.run('spotify_client.py', options)
-            .catch(err => console.error('Cache clear error:', err.message))
-            .finally(() => {
-                startTokenRefreshInterval();
-                resolve({ success: true });
-            });
-    });
+    spotify.clearTokens();
+    const auth = await spotify.startAuth();
+    return auth.success ? { success: true } : { success: false, error: auth.error };
 });
 
-// Window configuration (includes headroom margin so the 3D-tilted card
-// never clips against the window bounds)
+// ============================================================================
+// WINDOW
+// ============================================================================
+// Includes headroom margin so the 3D-tilted card never clips against the
+// window bounds
 const WINDOW_WIDTH = 960;
 const WINDOW_HEIGHT = 520;
-const SETTINGS_BUTTON_SIZE = 50; // Size of the settings button hitbox
 
-// Token refresh interval (45 minutes = 2700000 ms)
-const TOKEN_REFRESH_INTERVAL = 45 * 60 * 1000;
-
-let mainWindow;
-let pythonProcess = null;
-let tokenRefreshInterval = null;
+let mainWindow = null;
+let tray = null;
 let lastPlayingAt = 0;
 let windowScale = 1;
 let ambientActive = false;
 let ambientSavedBounds = null;
+let shuttingDown = false;
 
-// ============================================================================
-// SPOTIFY TOKEN MANAGEMENT
-// ============================================================================
-async function refreshSpotifyToken() {
-    return new Promise((resolve) => {
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args: ['--action', 'refresh_token'],
-            env: {
-                ...process.env,
-                SPOTIFY_CLIENT_ID,
-                SPOTIFY_CLIENT_SECRET
-            }
-        };
-
-        console.log('Refreshing Spotify token...');
-
-        PythonShell.run('spotify_client.py', options)
-            .then(results => {
-                if (results && results.length > 0) {
-                    const result = results[0];
-                    if (result.success) {
-                        console.log('Spotify token refreshed successfully');
-                    } else if (result.needs_auth) {
-                        console.log('Full Spotify authentication required, triggering...');
-                        // Trigger full auth by calling get_track which will open browser
-                        triggerFullAuth();
-                    } else {
-                        console.error('Token refresh failed:', result.error);
-                    }
-                    resolve(result);
-                } else {
-                    resolve({ success: false, error: 'No result from Python' });
-                }
-            })
-            .catch(err => {
-                console.error('Token refresh error:', err);
-                resolve({ success: false, error: err.message });
-            });
-    });
+// Windows won't resize a non-resizable window programmatically in some
+// configurations, so briefly lift the flag around every bounds change
+function setWindowBounds(bounds) {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const wasResizable = mainWindow.isResizable();
+    if (!wasResizable) mainWindow.setResizable(true);
+    mainWindow.setBounds(bounds);
+    if (!wasResizable) mainWindow.setResizable(false);
 }
 
-async function triggerFullAuth() {
-    // This will open the browser for Spotify authentication
-    return new Promise((resolve) => {
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args: ['--action', 'get_track'],
-            env: {
-                ...process.env,
-                SPOTIFY_CLIENT_ID,
-                SPOTIFY_CLIENT_SECRET
-            }
-        };
-
-        PythonShell.run('spotify_client.py', options)
-            .then(results => {
-                console.log('Full auth triggered');
-                resolve(results && results[0]);
-            })
-            .catch(err => {
-                console.error('Full auth error:', err);
-                resolve(null);
-            });
-    });
-}
-
-function startTokenRefreshInterval() {
-    // Clear any existing interval
-    if (tokenRefreshInterval) {
-        clearInterval(tokenRefreshInterval);
-    }
-
-    // Refresh token immediately on startup
-    refreshSpotifyToken();
-
-    // Set up periodic refresh every 45 minutes
-    tokenRefreshInterval = setInterval(() => {
-        refreshSpotifyToken();
-    }, TOKEN_REFRESH_INTERVAL);
-
-    console.log(`Token refresh scheduled every ${TOKEN_REFRESH_INTERVAL / 60000} minutes`);
-}
-
-// ============================================================================
-// WINDOW CREATION
-// ============================================================================
 function createWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -244,6 +238,9 @@ function createWindow() {
         resizable: false,
         skipTaskbar: true,
         focusable: true,
+        show: false,
+        title: 'Cadence',
+        icon: appIconPath(),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -254,22 +251,93 @@ function createWindow() {
     // Enable click-through by default
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
 
-    // Float above fullscreen apps and follow across Spaces
+    // Float above fullscreen apps and follow across Spaces (the workspace
+    // call is a no-op outside macOS)
     mainWindow.setAlwaysOnTop(true, 'screen-saver');
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-    // Load the renderer
     mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+    mainWindow.once('ready-to-show', () => mainWindow.show());
 
     // Open DevTools in development (uncomment for debugging)
     // mainWindow.webContents.openDevTools({ mode: 'detach' });
 
     mainWindow.on('closed', () => {
         mainWindow = null;
-        if (pythonProcess) {
-            pythonProcess.terminate();
-        }
     });
+}
+
+// ============================================================================
+// TRAY (menu bar on macOS, notification area on Windows)
+// ============================================================================
+function appIconPath() {
+    return path.join(__dirname, 'assets', 'icon.png');
+}
+
+function trayIcon() {
+    const file = path.join(__dirname, 'assets', process.platform === 'darwin' ? 'tray.png' : 'icon.png');
+    let image = nativeImage.createFromPath(file);
+    if (image.isEmpty()) image = nativeImage.createFromPath(appIconPath());
+    if (process.platform === 'win32') image = image.resize({ width: 16, height: 16 });
+    return image;
+}
+
+function createTray() {
+    try {
+        tray = new Tray(trayIcon());
+        tray.setToolTip('Cadence');
+        updateTrayMenu();
+        tray.on('click', () => {
+            if (process.platform === 'win32' && mainWindow) {
+                mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
+            }
+        });
+    } catch (e) {
+        console.error('Could not create tray icon:', e.message);
+    }
+}
+
+function updateTrayMenu() {
+    if (!tray) return;
+    const la = listenAlong ? listenAlong.status() : { mode: 'off' };
+    const sessionLabel = la.mode === 'host'
+        ? `Hosting ${la.code} · ${la.listeners} listening`
+        : la.mode === 'guest'
+            ? `Listening with ${la.hostName || 'a friend'}`
+            : null;
+
+    const menu = Menu.buildFromTemplate([
+        { label: 'Cadence', enabled: false },
+        { type: 'separator' },
+        {
+            label: 'Show overlay',
+            click: () => { if (mainWindow) mainWindow.show(); else createWindow(); }
+        },
+        {
+            label: 'Hide overlay',
+            click: () => { if (mainWindow) mainWindow.hide(); }
+        },
+        {
+            label: 'Settings',
+            click: () => {
+                if (!mainWindow) createWindow();
+                mainWindow.show();
+                mainWindow.webContents.send('open-settings');
+            }
+        },
+        { type: 'separator' },
+        ...(sessionLabel ? [
+            { label: sessionLabel, enabled: false },
+            ...(la.mode === 'host' ? [{ label: 'Copy invite link', click: () => clipboard.writeText(la.link) }] : []),
+            {
+                label: la.mode === 'host' ? 'End session' : 'Leave session',
+                click: () => listenAlong.leave()
+            },
+            { type: 'separator' }
+        ] : []),
+        { label: 'Quit Cadence', click: () => app.quit() }
+    ]);
+    tray.setContextMenu(menu);
 }
 
 // ============================================================================
@@ -293,31 +361,7 @@ ipcMain.on('move-window', (event, { deltaX, deltaY }) => {
 
 // Playback control (play / pause / next / previous / seek)
 ipcMain.handle('playback-control', async (event, command, positionMs) => {
-    const args = ['--action', 'control', '--command', command];
-    if (positionMs !== undefined && positionMs !== null) {
-        args.push('--position', String(positionMs));
-    }
-    return new Promise((resolve) => {
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args,
-            env: {
-                ...process.env,
-                SPOTIFY_CLIENT_ID,
-                SPOTIFY_CLIENT_SECRET
-            }
-        };
-
-        PythonShell.run('spotify_client.py', options)
-            .then(results => resolve(results && results[0]))
-            .catch(err => {
-                console.error('Playback control error:', err);
-                resolve({ success: false, error: err.message });
-            });
-    });
+    return spotify.control(command, positionMs);
 });
 
 // Scale the window (Size dial)
@@ -325,7 +369,7 @@ ipcMain.on('resize-window', (event, factor) => {
     windowScale = factor;
     if (mainWindow && !ambientActive) {
         const [x, y] = mainWindow.getPosition();
-        mainWindow.setBounds({
+        setWindowBounds({
             x, y,
             width: Math.round(WINDOW_WIDTH * factor),
             height: Math.round(WINDOW_HEIGHT * factor)
@@ -336,133 +380,66 @@ ipcMain.on('resize-window', (event, factor) => {
 // Manual Spotify token refresh (triggered by UI button)
 ipcMain.handle('refresh-spotify-token', async () => {
     console.log('Manual Spotify token refresh requested...');
-    return await refreshSpotifyToken();
+    if (!credentialsConfigured()) {
+        return { success: false, error: 'Add your Spotify API keys first (🔑)' };
+    }
+    return spotify.forceRefresh();
 });
 
-// Get current track from Spotify via Python
+// Current track: the host's when we're a listen-along guest, otherwise our own
 ipcMain.handle('get-current-track', async () => {
-    return new Promise((resolve, reject) => {
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args: ['--action', 'get_track'],
-            env: {
-                ...process.env,
-                SPOTIFY_CLIENT_ID,
-                SPOTIFY_CLIENT_SECRET
-            }
-        };
-
-        PythonShell.run('spotify_client.py', options)
-            .then(results => {
-                if (results && results.length > 0) {
-                    const result = results[0];
-                    recordPlayback(result);
-                    // Check for auth errors and trigger refresh
-                    if (!result.success && result.error_code === 401) {
-                        console.log('Received 401 error, refreshing token...');
-                        refreshSpotifyToken().then(() => {
-                            resolve(result); // Return original error, next poll will work
-                        });
-                    } else {
-                        resolve(result);
-                    }
-                } else {
-                    resolve(null);
-                }
-            })
-            .catch(err => {
-                console.error('Python error:', err);
-                // Check if error message indicates auth issue
-                if (err.message && (err.message.includes('401') || err.message.includes('token'))) {
-                    console.log('Auth error detected, refreshing token...');
-                    refreshSpotifyToken();
-                }
-                resolve(null);
-            });
-    });
+    if (listenAlong.isGuest()) {
+        return listenAlong.guestTrackResult();
+    }
+    if (!credentialsConfigured()) {
+        return { success: false, error: 'Spotify API keys not set', needs_setup: true };
+    }
+    const result = await spotify.getCurrentTrack();
+    recordPlayback(result);
+    listenAlong.onHostPoll(result);
+    return result;
 });
 
-// Get audio analysis from Spotify
+// Audio analysis (Spotify retired this for most apps; degrades to null)
 ipcMain.handle('get-audio-analysis', async (event, trackId) => {
-    return new Promise((resolve, reject) => {
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args: ['--action', 'get_analysis', '--track_id', trackId],
-            env: {
-                ...process.env,
-                SPOTIFY_CLIENT_ID,
-                SPOTIFY_CLIENT_SECRET
-            }
-        };
-
-        PythonShell.run('spotify_client.py', options)
-            .then(results => {
-                if (results && results.length > 0) {
-                    resolve(results[0]);
-                } else {
-                    resolve(null);
-                }
-            })
-            .catch(err => {
-                console.error('Audio analysis error:', err);
-                resolve(null);
-            });
-    });
+    if (!trackId || !spotify.isConnected()) return null;
+    return spotify.getAudioAnalysis(trackId);
 });
 
-// Get synced lyrics from LRCLIB (free, no auth required)
+// Synced lyrics from LRCLIB (free, no auth required)
 ipcMain.handle('get-synced-lyrics', async (event, { trackName, artistName, albumName, durationMs }) => {
-    return new Promise((resolve, reject) => {
-        const durationSeconds = Math.round(durationMs / 1000);
-        const options = {
-            mode: 'json',
-            pythonPath: getPythonPath(),
-            pythonOptions: ['-u'],
-            scriptPath: getScriptPath(),
-            args: [
-                '--action', 'get_lyrics',
-                '--track_name', trackName,
-                '--artist_name', artistName,
-                '--album_name', albumName || '',
-                '--duration', durationSeconds.toString()
-            ],
-            env: {
-                ...process.env
-            }
-        };
-
-        console.log(`Fetching lyrics for: ${trackName} by ${artistName}`);
-
-        PythonShell.run('spotify_client.py', options)
-            .then(results => {
-                if (results && results.length > 0) {
-                    const result = results[0];
-                    if (result.success) {
-                        console.log(`Loaded ${result.lines?.length || 0} lyrics (${result.syncType})`);
-                    } else {
-                        console.log('Lyrics error:', result.error);
-                    }
-                    resolve(result);
-                } else {
-                    resolve({ success: false, error: 'No result from Python', lines: [] });
-                }
-            })
-            .catch(err => {
-                console.error('Synced lyrics error:', err);
-                resolve({ success: false, error: err.message, lines: [] });
-            });
-    });
+    console.log(`Fetching lyrics for: ${trackName} by ${artistName}`);
+    const result = await getSyncedLyrics({ trackName, artistName, albumName, durationMs });
+    if (result.success) {
+        console.log(`Loaded ${result.lines.length} lyrics (${result.syncType})`);
+    } else {
+        console.log('Lyrics error:', result.error);
+    }
+    return result;
 });
 
 // ============================================================================
-// GENIUS LYRICS SCRAPER
+// LISTEN ALONG IPC
 // ============================================================================
+ipcMain.handle('listen-along-status', () => listenAlong.status());
+ipcMain.handle('listen-along-host', () => listenAlong.startHost());
+ipcMain.handle('listen-along-join', (event, code) => listenAlong.join(code));
+ipcMain.handle('listen-along-leave', () => listenAlong.leave().then(() => listenAlong.status()));
+ipcMain.handle('listen-along-mirror', (event, on) => listenAlong.setMirror(on));
+ipcMain.handle('copy-text', (event, text) => {
+    clipboard.writeText(String(text || ''));
+    return true;
+});
+ipcMain.handle('open-external', (event, url) => {
+    if (/^https?:\/\//i.test(String(url))) shell.openExternal(url);
+    return true;
+});
+
+// ============================================================================
+// GENIUS LYRICS SCRAPER (unsynced fallback)
+// ============================================================================
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+
 async function scrapeGeniusLyrics(artist, title) {
     try {
         // Normalize the search terms
@@ -480,10 +457,8 @@ async function scrapeGeniusLyrics(artist, title) {
         console.log('Fetching lyrics from:', url);
 
         const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-            },
-            timeout: 10000
+            headers: { 'User-Agent': BROWSER_UA },
+            signal: AbortSignal.timeout(10000)
         });
 
         if (!response.ok) {
@@ -558,8 +533,6 @@ ipcMain.handle('get-lyrics', async (event, { artist, title }) => {
 // ============================================================================
 // LYRICS TRANSLATION (Google translate gtx endpoint, batched by newline)
 // ============================================================================
-const TRANSLATE_UA = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' };
-
 ipcMain.handle('translate-lyrics', async (event, { lines }) => {
     try {
         const CHUNK = 35;
@@ -571,7 +544,7 @@ ipcMain.handle('translate-lyrics', async (event, { lines }) => {
             const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q='
                 + encodeURIComponent(chunk.join('\n'));
 
-            const response = await fetch(url, { headers: TRANSLATE_UA, timeout: 10000 });
+            const response = await fetch(url, { headers: { 'User-Agent': BROWSER_UA }, signal: AbortSignal.timeout(10000) });
             if (!response.ok) {
                 throw new Error(`Translate returned status ${response.status}`);
             }
@@ -603,7 +576,6 @@ ipcMain.handle('translate-lyrics', async (event, { lines }) => {
 // ============================================================================
 // DAILY LISTENING STATS (for the recap card)
 // ============================================================================
-const statsPath = () => path.join(app.getPath('userData'), 'daily-stats.json');
 let dailyStats = null;
 let statsDirty = false;
 
@@ -658,7 +630,6 @@ function saveDailyStats() {
 }
 
 setInterval(saveDailyStats, 15000);
-app.on('before-quit', saveDailyStats);
 
 ipcMain.handle('get-daily-recap', async () => {
     loadDailyStats();
@@ -689,11 +660,9 @@ ipcMain.handle('get-daily-recap', async () => {
     };
 });
 
-// Save user preferences
+// Save user preferences (the renderer keeps them in localStorage; this is a
+// hook for anything the main process cares about)
 ipcMain.handle('save-preferences', async (event, preferences) => {
-    // In a production app, you'd save to a file or database
-    // For now, we just acknowledge the save
-    console.log('Saving preferences:', preferences);
     return true;
 });
 
@@ -701,29 +670,49 @@ ipcMain.handle('save-preferences', async (event, preferences) => {
 // APP LIFECYCLE
 // ============================================================================
 app.whenReady().then(() => {
-    loadCredentials();
-    createWindow();
+    if (!gotTheLock) return; // another Cadence is already running; we're quitting
 
-    // Start automatic Spotify token refresh (once credentials exist)
-    if (credentialsConfigured()) {
-        startTokenRefreshInterval();
+    // Frameless window: no menu bar needed anywhere but macOS (where the
+    // default menu supplies Cmd+Q / Cmd+C / Cmd+V)
+    if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
+
+    loadSettings();
+    loadCredentials();
+    createClients();
+    createWindow();
+    createTray();
+
+    // First launch after the upgrade with keys but no tokens: start sign-in
+    // (existing users get their tokens imported from the old Python cache)
+    if (credentialsConfigured() && !spotify.isConnected()) {
+        spotify.startAuth();
     }
+
+    // A cadence:// link that arrived before we were ready
+    if (pendingDeepLink) {
+        const link = pendingDeepLink;
+        pendingDeepLink = null;
+        mainWindow.webContents.once('did-finish-load', () => handleDeepLink(link));
+    }
+    // Windows: first launch via a link passes it in argv
+    const argvLink = process.argv.find(a => typeof a === 'string' && a.startsWith(`${PROTOCOL}://`));
+    if (argvLink) mainWindow.webContents.once('did-finish-load', () => handleDeepLink(argvLink));
 
     // Ambient mode: when the user goes idle while music plays, expand the
     // overlay to fill the screen; any input shrinks it back
     setInterval(() => {
-        if (!mainWindow) return;
+        if (!mainWindow || mainWindow.isDestroyed()) return;
         const idle = powerMonitor.getSystemIdleTime();
         const playingRecently = Date.now() - lastPlayingAt < 10000;
 
         if (!ambientActive && idle >= 60 && playingRecently) {
             ambientActive = true;
             ambientSavedBounds = mainWindow.getBounds();
-            mainWindow.setBounds(screen.getPrimaryDisplay().bounds);
+            setWindowBounds(screen.getPrimaryDisplay().bounds);
             mainWindow.webContents.send('ambient-mode', true);
         } else if (ambientActive && idle < 3) {
             ambientActive = false;
-            if (ambientSavedBounds) mainWindow.setBounds(ambientSavedBounds);
+            if (ambientSavedBounds) setWindowBounds(ambientSavedBounds);
             mainWindow.webContents.send('ambient-mode', false);
         }
     }, 2000);
@@ -731,19 +720,25 @@ app.whenReady().then(() => {
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow();
+        } else if (mainWindow) {
+            mainWindow.show();
         }
     });
 });
 
 app.on('window-all-closed', () => {
-    // Clean up token refresh interval
-    if (tokenRefreshInterval) {
-        clearInterval(tokenRefreshInterval);
-        tokenRefreshInterval = null;
-    }
+    // The tray keeps the app alive on every platform; Quit lives in its menu
+});
 
-    if (process.platform !== 'darwin') {
-        app.quit();
+app.on('before-quit', (event) => {
+    saveDailyStats();
+    if (spotify) spotify.shutdown();
+    // Tell listeners we're leaving before the process dies (best effort, 1s cap)
+    if (listenAlong && !shuttingDown && (listenAlong.isHost() || listenAlong.isGuest())) {
+        event.preventDefault();
+        shuttingDown = true;
+        Promise.race([listenAlong.shutdown(), new Promise(r => setTimeout(r, 1000))])
+            .finally(() => app.quit());
     }
 });
 

@@ -33,6 +33,10 @@ const state = {
     hologramOn: false,
     holoCollapsed: false,
 
+    // Listen along
+    laStatus: null,               // last status object from the main process
+    laMirror: true,               // guest: also play the host's track on my Spotify
+
     // Ring scrubbing
     scrubbing: false,
     scrubMs: 0,
@@ -141,6 +145,14 @@ async function init() {
         }
     } catch (e) {
         console.error('Could not check credentials:', e);
+    }
+
+    // Listen along: reflect any session the main process already has
+    // (e.g. we were launched from a cadence:// link)
+    try {
+        renderListenAlong(await window.electronAPI.listenAlong.getStatus());
+    } catch (e) {
+        console.error('Could not read listen-along status:', e);
     }
 
     // 3D parallax scene (always on)
@@ -315,6 +327,110 @@ function setupEventListeners() {
         }
     });
 
+    // Setup can be skipped: following a friend's session needs no Spotify at all
+    document.getElementById('setup-skip').addEventListener('click', () => {
+        setupCard.classList.add('hidden');
+    });
+
+    // Browser sign-in finished
+    window.electronAPI.onSpotifyAuth((result) => {
+        const status = document.getElementById('setup-status');
+        if (result && result.success) {
+            status.textContent = 'Connected! 🎉';
+            setTimeout(() => setupCard.classList.add('hidden'), 1200);
+            fetchCurrentTrack();
+        } else {
+            status.textContent = 'Spotify sign-in did not finish: ' + ((result && result.error) || 'try again');
+        }
+    });
+
+    // Tray menu / cadence:// link wants the settings panel open
+    window.electronAPI.onOpenSettings(() => {
+        elements.settingsMenu.classList.remove('hidden');
+    });
+
+    // Listen along controls
+    const laInput = document.getElementById('la-code-input');
+    const laMsg = document.getElementById('la-msg');
+    const laBusy = (btn, on, label) => {
+        btn.disabled = on;
+        if (label) btn.textContent = label;
+    };
+
+    document.getElementById('la-host-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('la-host-btn');
+        laBusy(btn, true, '⏳ Starting…');
+        try {
+            const status = await window.electronAPI.listenAlong.host();
+            renderListenAlong(status);
+            if (status && status.link) {
+                await window.electronAPI.copyText(`Listen along with me on Cadence: ${status.link}  (code ${status.code})`);
+                laMsg.textContent = 'Invite link copied — paste it to a friend';
+            }
+        } catch (err) {
+            laMsg.textContent = 'Could not start: ' + err.message;
+        }
+        laBusy(btn, false, '🎧 Start a session');
+    });
+
+    const joinSession = async () => {
+        const btn = document.getElementById('la-join-btn');
+        const code = laInput.value.trim();
+        if (!code) {
+            laMsg.textContent = 'Paste a code like ABCD-EFGH or a cadence:// link';
+            return;
+        }
+        laBusy(btn, true, '…');
+        try {
+            const result = await window.electronAPI.listenAlong.join(code);
+            if (result && result.success) {
+                laInput.value = '';
+                laMsg.textContent = '';
+                renderListenAlong(result.status);
+                fetchCurrentTrack();
+            } else {
+                laMsg.textContent = (result && result.error) || 'Could not join';
+            }
+        } catch (err) {
+            laMsg.textContent = 'Could not join: ' + err.message;
+        }
+        laBusy(btn, false, 'Join');
+    };
+    document.getElementById('la-join-btn').addEventListener('click', joinSession);
+    laInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') joinSession();
+    });
+
+    const copyInvite = async () => {
+        const st = state.laStatus;
+        if (!st || !st.link) return;
+        await window.electronAPI.copyText(`Listen along with me on Cadence: ${st.link}  (code ${st.code})`);
+        laMsg.textContent = 'Invite link copied';
+        setTimeout(() => { if (laMsg.textContent === 'Invite link copied') laMsg.textContent = ''; }, 2500);
+    };
+    document.getElementById('la-copy-btn').addEventListener('click', copyInvite);
+    document.getElementById('la-code').addEventListener('click', copyInvite);
+
+    const leaveSession = async () => {
+        const status = await window.electronAPI.listenAlong.leave();
+        renderListenAlong(status);
+        // Back to our own Spotify right away
+        state.previousTrackId = null;
+        fetchCurrentTrack();
+    };
+    document.getElementById('la-end-btn').addEventListener('click', leaveSession);
+    document.getElementById('la-leave-btn').addEventListener('click', leaveSession);
+
+    window.electronAPI.listenAlong.onStatus((status) => {
+        const wasGuest = state.laStatus && state.laStatus.mode === 'guest';
+        renderListenAlong(status);
+        // Session ended under us (host left): re-render from our own Spotify
+        if (wasGuest && status.mode === 'off') {
+            state.previousTrackId = null;
+            fetchCurrentTrack();
+        }
+    });
+
     // Emitter is the hologram's power button
     document.getElementById('holo-puck').addEventListener('click', () => {
         state.holoCollapsed = !state.holoCollapsed;
@@ -351,11 +467,13 @@ function setupMouseTracking() {
         const isOverRecap = !elements.recapCard.classList.contains('hidden') &&
             isPointInRect(e.clientX, e.clientY, elements.recapCard.getBoundingClientRect());
         const isOverControls = state.layoutMode !== 'ticker' &&
+            !(state.laStatus && state.laStatus.mode === 'guest') &&
             isPointInRect(e.clientX, e.clientY, elements.playbackControls.getBoundingClientRect());
 
         // The scrub ring: only the band around the album art
         let isOverArc = false;
-        if (state.arcOn && state.layoutMode !== 'ticker') {
+        const isGuest = state.laStatus && state.laStatus.mode === 'guest';
+        if (state.arcOn && state.layoutMode !== 'ticker' && !isGuest) {
             const arcRect = document.getElementById('progress-arc').getBoundingClientRect();
             const dist = Math.hypot(
                 e.clientX - (arcRect.left + arcRect.width / 2),
@@ -504,6 +622,12 @@ function setLyricBrightness(value, save) {
 function setPrefToggle(pref, on) {
     state[pref] = on;
 
+    if (pref === 'laMirror') {
+        // Listen-along guest option, lives in the main process (not a saved pref)
+        window.electronAPI.listenAlong.setMirror(on).then(renderListenAlong);
+        return;
+    }
+
     if (pref === 'adaptiveTheme') {
         elements.body.classList.toggle('adaptive-theme', on);
     } else if (pref === 'translationOn') {
@@ -610,6 +734,47 @@ function savePreferences() {
 }
 
 // ============================================================================
+// LISTEN ALONG UI
+// ============================================================================
+function renderListenAlong(status) {
+    if (!status) return;
+    state.laStatus = status;
+
+    const idle = document.getElementById('la-idle');
+    const hosting = document.getElementById('la-hosting');
+    const guest = document.getElementById('la-guest');
+    const msg = document.getElementById('la-msg');
+
+    idle.classList.toggle('hidden', status.mode !== 'off');
+    hosting.classList.toggle('hidden', status.mode !== 'host');
+    guest.classList.toggle('hidden', status.mode !== 'guest');
+
+    if (status.mode === 'host') {
+        document.getElementById('la-code').textContent = status.code;
+        const n = status.listeners || 0;
+        document.getElementById('la-listeners').textContent = n === 0
+            ? 'Share the code or link with friends — they can join from Cadence'
+            : `${n} ${n === 1 ? 'friend is' : 'friends are'} listening with you`;
+    } else if (status.mode === 'guest') {
+        const dot = `<span class="la-dot${status.connected ? '' : ' off'}"></span>`;
+        const who = status.hostName ? `Listening with ${status.hostName}` : 'Listening along';
+        document.getElementById('la-with').innerHTML = dot + who + (status.connected ? '' : ' (reconnecting…)');
+        document.getElementById('la-guest-track').textContent = status.track
+            ? `${status.is_playing ? '▶' : '⏸'} ${status.track.name} — ${status.track.artist}`
+            : 'Waiting for the host to play something…';
+        state.laMirror = status.mirror !== false;
+        syncToggleInputs();
+        document.getElementById('la-mirror-note').textContent = status.mirrorNote || '';
+    }
+
+    if (status.message) msg.textContent = status.message;
+    else if (status.mode !== 'off') msg.textContent = '';
+
+    // Playback controls act on *your* Spotify; hide them while following a host
+    elements.body.classList.toggle('listen-along-guest', status.mode === 'guest');
+}
+
+// ============================================================================
 // SPOTIFY POLLING
 // ============================================================================
 function startPolling() {
@@ -684,6 +849,11 @@ async function fetchCurrentTrack() {
                 // playback resumes with the same song
                 state.previousTrackId = null;
                 resetDisplay();
+            }
+            // Listen-along guest with nothing from the host yet
+            if (result && result.listenAlong && result.listenAlong.waitingFor) {
+                elements.trackName.textContent = 'Listening along';
+                elements.artistName.textContent = `Waiting for ${result.listenAlong.waitingFor}…`;
             }
             state.isPlaying = false;
             elements.body.classList.remove('is-playing');
@@ -1139,6 +1309,7 @@ function initScrubbing() {
 
     arc.addEventListener('mousedown', (e) => {
         if (!state.arcOn || !state.currentTrack || !state.trackDuration) return;
+        if (state.laStatus && state.laStatus.mode === 'guest') return;
         state.scrubbing = true;
         elements.body.classList.add('scrubbing');
         state.scrubMs = angleToMs(e);

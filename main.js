@@ -245,22 +245,31 @@ function resolveSource() {
     return localOk ? 'local' : 'api';
 }
 
+// In Auto with the API connected, a poll can still land on the local player
+// (Spotify paused, YouTube Music playing). Controls follow whatever produced
+// the track on screen.
+let activeSource = null;
+function effectiveSource() {
+    const s = resolveSource();
+    return s === 'api' && activeSource === 'local' ? 'local' : s;
+}
+
 // One object for everything downstream (IPC, listen along) — each call goes
 // to the API client or the local player depending on the current source
 const player = {
-    source: resolveSource,
-    isConnected: () => resolveSource() === 'local' || spotify.isConnected(),
-    getCurrentTrack: () => resolveSource() === 'local' ? localPlayer.getCurrentTrack() : spotify.getCurrentTrack(),
-    control: (command, positionMs) => resolveSource() === 'local'
+    source: effectiveSource,
+    isConnected: () => effectiveSource() === 'local' || spotify.isConnected(),
+    getCurrentTrack: () => effectiveSource() === 'local' ? localPlayer.getCurrentTrack() : spotify.getCurrentTrack(),
+    control: (command, positionMs) => effectiveSource() === 'local'
         ? localPlayer.control(command, positionMs)
         : spotify.control(command, positionMs),
-    playTrack: (uri, positionMs) => resolveSource() === 'local'
+    playTrack: (uri, positionMs) => effectiveSource() === 'local'
         ? localPlayer.playTrack(uri, positionMs)
         : spotify.playTrack(uri, positionMs),
-    getProfile: () => resolveSource() === 'local' ? localPlayer.getProfile() : spotify.getProfile(),
-    queueTrack: (uri) => resolveSource() === 'local' ? localPlayer.queueTrack(uri) : spotify.queueTrack(uri),
+    getProfile: () => effectiveSource() === 'local' ? localPlayer.getProfile() : spotify.getProfile(),
+    queueTrack: (uri) => effectiveSource() === 'local' ? localPlayer.queueTrack(uri) : spotify.queueTrack(uri),
     // Only the Web API can add to the queue
-    canQueue: () => resolveSource() === 'api' && Boolean(spotify && spotify.isConnected())
+    canQueue: () => effectiveSource() === 'api' && Boolean(spotify && spotify.isConnected())
 };
 
 // What friends see in listen along: the name from settings, else the Spotify
@@ -283,7 +292,7 @@ function playerInfo() {
         configured: credentialsConfigured(),
         connected: spotify ? spotify.isConnected() : false,
         source: sourcePreference(),
-        active: resolveSource(),
+        active: effectiveSource(),
         localAvailable: Boolean(localPlayer && localPlayer.available),
         localDescription: localPlayer ? localPlayer.description : null,
         localCanPlayTrack: Boolean(localPlayer && localPlayer.canPlayTrack),
@@ -701,7 +710,7 @@ ipcMain.handle('get-current-track', async () => {
     if (listenAlong.isGuest()) {
         return listenAlong.guestTrackResult();
     }
-    const source = resolveSource();
+    let source = resolveSource();
     let result;
     if (source === 'local') {
         result = await localPlayer.getCurrentTrack();
@@ -710,7 +719,20 @@ ipcMain.handle('get-current-track', async () => {
             return { success: false, error: 'Spotify API keys not set', needs_setup: true, source };
         }
         result = await spotify.getCurrentTrack();
+        // Auto with the API connected: if Spotify isn't playing anything, the
+        // Spotify app or a YouTube Music tab on this computer might be
+        const apiPlaying = Boolean(result.success && result.track && result.track.is_playing);
+        if (sourcePreference() === 'auto' && !apiPlaying && localPlayer && localPlayer.available) {
+            const local = await localPlayer.getCurrentTrack();
+            const localPlaying = Boolean(local && local.track && local.track.is_playing);
+            const apiHasTrack = Boolean(result.success && result.track);
+            if (localPlaying || (local && local.needs_permission && !apiHasTrack)) {
+                result = local;
+                source = 'local';
+            }
+        }
     }
+    activeSource = source;
     result.source = source;
     recordPlayback(result);
     listenAlong.onHostPoll(result);

@@ -115,6 +115,7 @@ let settings = {
     relay: null,
     source: 'auto',
     clickThroughLock: false,
+    roomVote: false,
     displayName: '',
     hotkeyToggle: 'CommandOrControl+Shift+H',
     hotkeySettings: 'CommandOrControl+Shift+L'
@@ -215,6 +216,7 @@ function createClients() {
             if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('listen-along-game', msg);
         }
     });
+    listenAlong.setRoomVote(Boolean(settings.roomVote));
 }
 
 // ============================================================================
@@ -293,7 +295,7 @@ function playerInfo() {
 }
 
 ipcMain.handle('set-display-name', (event, name) => {
-    settings.displayName = String(name || '').replace(/[ -]/g, '').trim().slice(0, 40);
+    settings.displayName = String(name || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 40);
     saveSettings();
     return playerInfo();
 });
@@ -766,6 +768,14 @@ ipcMain.handle('listen-along-request-action', (event, reqId, action) => listenAl
 
 // Host: hand the session to a listener (and stay on as one)
 ipcMain.handle('listen-along-handoff', (event, toId) => listenAlong.handoff(String(toId || '')));
+
+// Room vote: the host lets the room pick the next song; everyone casts
+ipcMain.handle('listen-along-room-vote', (event, on) => {
+    settings.roomVote = Boolean(on);
+    saveSettings();
+    return listenAlong.setRoomVote(settings.roomVote);
+});
+ipcMain.handle('listen-along-cast-vote', (event, pick) => listenAlong.castVote(String(pick || '')));
 
 // Karaoke & games: renderer-defined messages to everyone in the session
 ipcMain.handle('listen-along-game', (event, payload) => {

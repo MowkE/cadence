@@ -98,6 +98,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         handoff: (toId) => ipcRenderer.invoke('listen-along-handoff', toId),
         // Karaoke & games traffic (any JSON; { game, action, ... })
         sendGame: (payload) => ipcRenderer.invoke('listen-along-game', payload),
+        // Room vote: host toggle + everyone's pick
+        setRoomVote: (on) => ipcRenderer.invoke('listen-along-room-vote', on),
+        castVote: (pick) => ipcRenderer.invoke('listen-along-cast-vote', pick),
         onGame: (callback) => {
             ipcRenderer.on('listen-along-game', (event, msg) => callback(msg));
         },

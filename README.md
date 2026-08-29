@@ -105,6 +105,8 @@ Share your music with a friend who also has Cadence:
 
 **Handoff:** each listener in the host's panel has a 🎧→ button — press it and that friend becomes the host while you keep listening. If the host quits Cadence with people still listening, the session hands itself to the first listener instead of ending.
 
+**The room picks the next song** (host toggle in the hosting panel): in the last 30 seconds of each song, the pending requests go to a 20-second vote on everyone's overlay — up to 4 options, one pick each — and the winner plays next, automatically. A single request just plays. Ties go to the earliest request; losing requests stay in the list for the next vote.
+
 **Song requests:** guests paste a Spotify song link (Spotify → Share → Copy Song Link) or press **Request what I'm playing**. The host sees the request with album art and who asked, and can **▶ play it now**, **＋ queue it** (Web API only), or **✕ pass** — guests get told which happened.
 
 How it works: your overlay publishes tiny "state" messages (track, position, playing) to a private, randomly named topic on [ntfy.sh](https://ntfy.sh) — only when something changes, never your audio or account. Guests subscribe to that topic. Anyone with the code can follow, so share it like a party invite. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.

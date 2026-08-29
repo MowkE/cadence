@@ -3655,3 +3655,139 @@ body.layout-notch #settings-menu {
     right: 10px;
     left: auto;
 }
+
+/* ============================================================================
+   ROOM VOTE CARD — the next song, picked by everyone listening
+   ============================================================================ */
+#vote-card {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    width: 300px;
+    padding: 12px 12px 10px;
+    border-radius: 16px;
+    background: rgba(16, 16, 24, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 24px rgba(var(--dominant-color-rgb), 0.25);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+    z-index: 2900;
+    animation: menu-slide-in 0.25s ease;
+}
+
+.vote-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.vote-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.vote-clock {
+    font-family: 'Teko', 'Rajdhani', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    color: rgb(var(--dominant-color-rgb));
+    font-variant-numeric: tabular-nums;
+}
+
+.vote-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vote-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.vote-option:hover:not(:disabled) {
+    border-color: rgba(var(--dominant-color-rgb), 0.7);
+}
+
+.vote-option:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.vote-option.picked {
+    border-color: rgb(var(--dominant-color-rgb));
+    background: rgba(var(--dominant-color-rgb), 0.16);
+}
+
+.vote-option:disabled:not(.picked) {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.vote-option.static {
+    cursor: default;
+}
+
+.vote-art {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.vote-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.vote-name {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vote-sub {
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vote-note {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.vote-note:empty {
+    display: none;
+}
+
+body.layout-ticker #vote-card,
+body.layout-notch #vote-card {
+    left: 12px;
+    bottom: auto;
+    top: 60px;
+}
+
+body.karaoke-mode #vote-card {
+    z-index: 3050;
+}

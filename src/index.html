@@ -128,6 +128,13 @@
         <div id="kk-meta" class="kk-meta"></div>
     </div>
 
+    <!-- Room vote: the next song, picked by everyone listening -->
+    <div id="vote-card" class="hidden">
+        <div class="vote-head"><span class="vote-title" id="vote-title">Next up — pick one</span><span class="vote-clock" id="vote-clock"></span></div>
+        <div class="vote-options" id="vote-options"></div>
+        <div class="vote-note" id="vote-note"></div>
+    </div>
+
     <!-- Corner grip: drag to resize the overlay -->
     <div id="resize-grip" title="Drag to resize">⤡</div>
 
@@ -383,6 +390,12 @@
                     <div class="la-hint" id="la-listeners">Share the code or link with friends</div>
                     <div id="la-listener-list" class="la-listeners"></div>
                     <div id="la-requests" class="la-requests"></div>
+                    <label class="toggle-row">
+                        <span class="toggle-label">Let the room pick the next song</span>
+                        <input type="checkbox" class="pref-toggle" data-pref="roomVote">
+                        <span class="toggle-switch"></span>
+                    </label>
+                    <div class="la-hint">In the last 30 seconds of a song, the requests go to a 20-second vote on everyone's overlay and the winner plays next. A single request just plays.</div>
                     <div class="la-actions">
                         <button id="la-copy-btn" class="action-btn la-btn">Copy link</button>
                         <button id="la-end-btn" class="action-btn recap-btn">End</button>

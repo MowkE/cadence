@@ -49,6 +49,7 @@ const state = {
     playerInfo: null,
     playerSource: 'auto',         // 'auto' | 'local' | 'api'
     clickThroughLock: false,
+    roomVote: false,              // host: the room picks the next song (lives in the session)
 
     // Auto-hide when paused
     autoHideMin: 0,               // 0 = off
@@ -375,7 +376,7 @@ function setupEventListeners() {
 
     // Tell the main process when a panel is open (the click-through lock only
     // lets the overlay take the mouse while one is)
-    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel')];
+    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel'), document.getElementById('vote-card')];
     const notifyPanelOpen = () => {
         state.panelOpen = panels.some(p => p && !p.classList.contains('hidden'));
         window.electronAPI.setPanelOpen(state.panelOpen);
@@ -470,6 +471,15 @@ function setupEventListeners() {
             state.previousTrackId = null;
             fetchCurrentTrack();
         }
+    });
+
+    // Room vote: pick the next song
+    document.getElementById('vote-options').addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-pick]');
+        if (!btn) return;
+        btn.disabled = true;
+        const r = await window.electronAPI.listenAlong.castVote(btn.dataset.pick);
+        if (r && r.status) renderListenAlong(r.status);
     });
 
     // Hand the session to a listener
@@ -614,9 +624,14 @@ function setupMouseTracking() {
         const isOverGames = !gamesPanel.classList.contains('hidden') &&
             isPointInRect(e.clientX, e.clientY, gamesPanel.getBoundingClientRect());
 
+        // Room vote card
+        const voteCard = document.getElementById('vote-card');
+        const isOverVote = !voteCard.classList.contains('hidden') &&
+            isPointInRect(e.clientX, e.clientY, voteCard.getBoundingClientRect());
+
         // If over interactive elements, capture mouse events
         if (isOverSettings || isOverMenu || isOverRecap || isOverControls || isOverArc || isOverPuck ||
-            isOverSetup || isOverGrip || isOverGames || state.scrubbing || state.resizing) {
+            isOverSetup || isOverGrip || isOverGames || isOverVote || state.scrubbing || state.resizing) {
             window.electronAPI.setIgnoreMouse(false);
         } else {
             window.electronAPI.setIgnoreMouse(true);
@@ -876,6 +891,11 @@ function setPrefToggle(pref, on) {
         return;
     }
 
+    if (pref === 'roomVote') {
+        window.electronAPI.listenAlong.setRoomVote(on).then(renderListenAlong);
+        return;
+    }
+
     if (pref === 'clickThroughLock') {
         // About the window, not the page — lives in the main process
         window.electronAPI.setClickThroughLock(on).then(applyPlayerInfo);
@@ -1017,6 +1037,8 @@ function renderListenAlong(status) {
             : `${n === 1 ? '1 friend is' : `${n} friends are`} listening with you. 🎧→ hands them the session.`;
         renderListeners(status.listenersDetail || []);
         renderRequests(status.requests || [], Boolean(status.canQueue));
+        state.roomVote = Boolean(status.roomVote);
+        syncToggleInputs();
     } else if (status.mode === 'guest') {
         document.getElementById('la-req-note').textContent = status.requestNote || '';
         const dot = `<span class="la-dot${status.connected ? '' : ' off'}"></span>`;
@@ -1038,8 +1060,62 @@ function renderListenAlong(status) {
         renderListeners([]);
     }
 
+    renderVote(status);
+
     // Playback controls act on *your* Spotify; hide them while following a host
     elements.body.classList.toggle('listen-along-guest', status.mode === 'guest');
+}
+
+// ============================================================================
+// ROOM VOTE — the next song, picked by everyone listening
+// ============================================================================
+let voteTimer = null;
+function renderVote(status) {
+    const card = document.getElementById('vote-card');
+    const inSession = status && status.mode !== 'off';
+    const vote = inSession ? status.vote : null;
+    const result = inSession ? status.voteResult : null;
+    const optionsEl = document.getElementById('vote-options');
+    const title = document.getElementById('vote-title');
+    const clock = document.getElementById('vote-clock');
+    const note = document.getElementById('vote-note');
+    clearInterval(voteTimer);
+    voteTimer = null;
+
+    const row = (o, extra) => `
+        ${o.album_art ? `<img class="vote-art" src="${escapeHtmlText(o.album_art)}" alt="">` : '<span class="vote-art"></span>'}
+        <span class="vote-meta">
+            <span class="vote-name">${escapeHtmlText(o.name)}</span>
+            <span class="vote-sub">${escapeHtmlText(o.artist)} · ${escapeHtmlText(o.by)}${extra || ''}</span>
+        </span>`;
+
+    if (vote && vote.options && vote.options.length) {
+        title.textContent = 'Next up — pick one';
+        optionsEl.innerHTML = vote.options.map(o => `
+            <button class="vote-option${vote.myPick === o.uri ? ' picked' : ''}" data-pick="${escapeHtmlText(o.uri)}" ${vote.myPick ? 'disabled' : ''}>${row(o)}</button>`).join('');
+        note.textContent = vote.myPick ? `Voted · ${vote.votes || 0} in` : '';
+        const tick = () => {
+            const left = Math.max(0, Math.ceil((vote.endsAt - Date.now()) / 1000));
+            clock.textContent = left;
+            if (left <= 0) { clearInterval(voteTimer); voteTimer = null; }
+        };
+        tick();
+        voteTimer = setInterval(tick, 250);
+        card.classList.remove('hidden');
+    } else if (result && result.winner && Date.now() < result.until) {
+        const w = result.winner;
+        const n = (result.tally && result.tally[w.uri]) || 0;
+        title.textContent = 'Next up';
+        clock.textContent = '';
+        optionsEl.innerHTML = `<div class="vote-option static">${row(w)}</div>`;
+        note.textContent = result.auto
+            ? 'The only request — it plays when this song ends'
+            : `${n} ${n === 1 ? 'vote' : 'votes'} · plays when this song ends`;
+        card.classList.remove('hidden');
+        voteTimer = setTimeout(() => card.classList.add('hidden'), Math.max(0, result.until - Date.now()));
+    } else {
+        card.classList.add('hidden');
+    }
 }
 
 // Host: who's listening, each with a "hand off the session" button

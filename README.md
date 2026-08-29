@@ -55,8 +55,9 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 
 ## Features
 
+- **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
-- **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; if they have Spotify Premium, Cadence can also play the same song on their speakers, in sync
+- **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync
 - **Three lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
@@ -66,9 +67,18 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 - **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, daily listening recap, ambient screensaver mode when idle
 - **Mac and Windows**, one codebase, no Python or extra installs
 
-## Connect your Spotify (~2 minutes, free)
+## Setup: there isn't any
 
-Cadence reads what you're playing through Spotify's API using *your own* API keys — nothing is shared, and the keys stay on your computer. A free Spotify account is fine for lyrics and everything visual; **Premium** is only needed for the playback controls, scrubbing, and playing along in a friend's session.
+Cadence reads what's playing straight from the Spotify desktop app on your computer — no developer app, no API keys, and **no Premium**. Install it, open Spotify, play something.
+
+- **Mac:** the first time, macOS asks whether Cadence may control Spotify — click **Allow**. (Changed your mind later? System Settings → Privacy & Security → Automation.)
+- **Windows:** nothing to approve. Cadence listens to the system media session Spotify already reports to — the same thing the volume flyout shows. Album art comes from a free iTunes/Deezer lookup, so it can occasionally differ from Spotify's.
+
+Free accounts get everything: lyrics, visuals, and the play/pause/skip/seek controls in the overlay.
+
+### Optional: Spotify Web API keys
+
+You can also connect through Spotify's Web API with your own keys (gear → 🔑). It adds two things: following playback on your *other* devices (phone, speakers), and — on Windows — playing along in a friend's listen-along session. **Since February 2026 Spotify requires a Premium account to create a developer app** (and caps each app at 5 users), so this is strictly opt-in.
 
 1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and log in with your Spotify account
 2. Click **Create app** — name and description can be anything (e.g. "Cadence")
@@ -77,9 +87,9 @@ Cadence reads what you're playing through Spotify's API using *your own* API key
    http://127.0.0.1:8888/callback
    ```
 4. Save, then open the app's **Settings** to find your **Client ID** and **Client Secret**
-5. In Cadence's **Connect your Spotify** card, paste both and press **Connect**. Your browser opens once for Spotify's approval — accept, and lyrics start flowing.
+5. In Cadence, gear → 🔑, paste both and press **Connect**. Your browser opens once for Spotify's approval.
 
-To change the keys later, open settings (the gear) and press 🔑. Just want to watch a friend's session? Press **Skip for now** — following a session needs no Spotify setup at all.
+The **Spotify** section in settings picks the source: **Auto** (the Web API while it's connected, otherwise the Spotify app), **Spotify app**, or **Web API**.
 
 ## Listen along
 
@@ -87,14 +97,16 @@ Share your music with a friend who also has Cadence:
 
 **Host:** gear → **Listen along** → **Start a session**. Cadence generates a code like `K7PM-3QXZ` and copies an invite (`cadence://join/K7PM-3QXZ`) to your clipboard. Paste it to a friend. The panel shows how many people are listening; **End** stops the session.
 
-**Friend:** click the link (it opens Cadence) or paste the code into gear → **Listen along** → **Join**. Their overlay switches to your track and lyrics, in sync with where you are in the song — even if they haven't connected Spotify. With **Play on my Spotify too** on (default), Cadence also starts the same song on their Spotify at the same position, follows your skips, pauses and seeks, and pauses when they leave. That part needs Spotify Premium and the Spotify app open on their side.
+**Friend:** click the link (it opens Cadence) or paste the code into gear → **Listen along** → **Join**. Their overlay switches to your track and lyrics, in sync with where you are in the song — even if they haven't connected Spotify. With **Play on my Spotify too** on (default), Cadence also starts the same song on their Spotify at the same position, follows your skips, pauses and seeks, and pauses when they leave. That part needs the Spotify app open on their side; on Mac any account works, on Windows it needs Web API keys (see above).
 
 How it works: your overlay publishes tiny "state" messages (track, position, playing) to a private, randomly named topic on [ntfy.sh](https://ntfy.sh) — only when something changes, never your audio or account. Guests subscribe to that topic. Anyone with the code can follow, so share it like a party invite. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
 
 ## Usage
 
-- **Drag the gear** to move the overlay; **click it** for settings
-- The window is click-through everywhere except its controls, so it floats harmlessly over games and full-screen apps
+- **Drag the gear** to move the overlay; **click it** for settings. **Ctrl/⌘ + Shift + L** opens settings from anywhere
+- **Resize** with the Size slider in settings, or drag the **⤡ grip** at the overlay's bottom-right corner
+- The window is click-through everywhere except its controls. If something underneath still isn't getting your clicks, turn on **Click-through lock** (settings, or the tray menu): the overlay then never takes the mouse unless a panel is open
+- On Windows the overlay re-asserts itself above borderless/windowed-fullscreen apps (games, video). Exclusive-fullscreen games can't be overlaid by any window — switch the game to borderless
 - Hover the album art for playback controls; with Progress arc enabled, drag the ring around the art to scrub through the song
 - Play music and go idle for a minute — Cadence becomes a full-screen ambient lyric display until you touch the mouse or keyboard
 - Menu bar / tray icon: show, hide, open settings, copy the invite link while hosting, quit

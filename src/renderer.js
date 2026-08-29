@@ -40,8 +40,15 @@ const state = {
     // Ring scrubbing
     scrubbing: false,
     scrubMs: 0,
-    scaleMode: 'medium',          // 'small' | 'medium' | 'large'
+    scaleMode: 'medium',          // 'small' | 'medium' | 'large' | 'custom'
+    scaleFactor: 1,               // window + content scale, 0.5–2.5
+    resizing: false,              // dragging the corner grip
     lyricBrightness: 100,         // percent, 30–150
+
+    // Now-playing source + click-through lock (both live in the main process)
+    playerInfo: null,
+    playerSource: 'auto',         // 'auto' | 'local' | 'api'
+    clickThroughLock: false,
 
     // Beat estimate from synced lyric timing (ms per beat, null = unknown)
     beatMs: null,
@@ -137,15 +144,19 @@ async function init() {
     // Load saved preferences
     loadPreferences();
 
-    // First run: show the API setup card until credentials exist
+    // Where "now playing" comes from. On Mac/Windows the Spotify app on this
+    // computer is read directly, so there's nothing to set up; the API-keys
+    // card only appears on first run where that isn't available
     try {
-        const creds = await window.electronAPI.getCredentialsStatus();
-        if (!creds || !creds.configured) {
+        const info = await window.electronAPI.getCredentialsStatus();
+        applyPlayerInfo(info);
+        if (info && !info.configured && !info.localAvailable) {
             document.getElementById('setup-card').classList.remove('hidden');
         }
     } catch (e) {
         console.error('Could not check credentials:', e);
     }
+    window.electronAPI.onPlayerInfo(applyPlayerInfo);
 
     // Listen along: reflect any session the main process already has
     // (e.g. we were launched from a cadence:// link)
@@ -270,6 +281,8 @@ function setupEventListeners() {
                 setLayoutMode(styleValue);
             } else if (styleType === 'scale') {
                 setScaleMode(styleValue);
+            } else if (styleType === 'source') {
+                setPlayerSource(styleValue);
             }
 
             // Update active state
@@ -348,6 +361,22 @@ function setupEventListeners() {
     window.electronAPI.onOpenSettings(() => {
         elements.settingsMenu.classList.remove('hidden');
     });
+    window.electronAPI.onToggleSettings(() => {
+        elements.settingsMenu.classList.toggle('hidden');
+    });
+
+    // Tell the main process when a panel is open (the click-through lock only
+    // lets the overlay take the mouse while one is)
+    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card')];
+    const notifyPanelOpen = () => {
+        window.electronAPI.setPanelOpen(panels.some(p => p && !p.classList.contains('hidden')));
+    };
+    const panelObserver = new MutationObserver(notifyPanelOpen);
+    panels.forEach(p => p && panelObserver.observe(p, { attributes: true, attributeFilter: ['class'] }));
+    notifyPanelOpen();
+
+    // Size slider + corner grip
+    setupResize();
 
     // Listen along controls
     const laInput = document.getElementById('la-code-input');
@@ -494,12 +523,23 @@ function setupMouseTracking() {
         const isOverSetup = !setupCard.classList.contains('hidden') &&
             isPointInRect(e.clientX, e.clientY, setupCard.getBoundingClientRect());
 
+        // The corner resize grip (hidden in ambient mode)
+        const isOverGrip = !elements.body.classList.contains('ambient-mode') &&
+            isPointInRect(e.clientX, e.clientY, document.getElementById('resize-grip').getBoundingClientRect());
+
         // If over interactive elements, capture mouse events
-        if (isOverSettings || isOverMenu || isOverRecap || isOverControls || isOverArc || isOverPuck || isOverSetup || state.scrubbing) {
+        if (isOverSettings || isOverMenu || isOverRecap || isOverControls || isOverArc || isOverPuck ||
+            isOverSetup || isOverGrip || state.scrubbing || state.resizing) {
             window.electronAPI.setIgnoreMouse(false);
         } else {
             window.electronAPI.setIgnoreMouse(true);
         }
+    });
+
+    // The cursor left the window: never keep it captured (a stuck capture is
+    // what makes the overlay block clicks on whatever is underneath)
+    document.addEventListener('mouseleave', () => {
+        if (!state.scrubbing && !state.resizing) window.electronAPI.setIgnoreMouse(true);
     });
 }
 
@@ -603,14 +643,91 @@ function setLayoutMode(mode) {
     savePreferences();
 }
 
-function setScaleMode(mode) {
-    const factors = { small: 0.85, medium: 1, large: 1.2 };
-    const factor = factors[mode] || 1;
+const SCALE_PRESETS = { small: 0.85, medium: 1, large: 1.2 };
+const SCALE_MIN = 0.5;
+const SCALE_MAX = 2.5;
 
-    state.scaleMode = mode;
-    document.documentElement.style.zoom = factor;
-    window.electronAPI.resizeWindow(factor);
-    savePreferences();
+function setScaleMode(mode) {
+    setScaleFactor(SCALE_PRESETS[mode] || 1, true);
+}
+
+// Continuous scale (slider / corner drag). The main process clamps it to the
+// screen and reports what it applied so the page zoom and the window agree.
+let scaleRequestPending = null;
+function setScaleFactor(factor, save) {
+    const wanted = Math.max(SCALE_MIN, Math.min(SCALE_MAX, Number(factor) || 1));
+    state.scaleFactor = wanted;
+    document.documentElement.style.zoom = wanted;
+    updateSizeControls();
+
+    scaleRequestPending = wanted;
+    window.electronAPI.resizeWindow(wanted).then(applied => {
+        if (scaleRequestPending !== wanted) return; // a newer value is on its way
+        scaleRequestPending = null;
+        if (typeof applied === 'number' && Math.abs(applied - wanted) > 0.001) {
+            state.scaleFactor = applied;
+            document.documentElement.style.zoom = applied;
+            updateSizeControls();
+        }
+        if (save) savePreferences();
+    }).catch(() => {
+        if (save) savePreferences();
+    });
+}
+
+function updateSizeControls() {
+    const pct = Math.round(state.scaleFactor * 100);
+    const slider = document.getElementById('size-slider');
+    const label = document.getElementById('size-value');
+    if (slider && Number(slider.value) !== pct) slider.value = pct;
+    if (label) label.textContent = `${pct}%`;
+    state.scaleMode = Object.keys(SCALE_PRESETS)
+        .find(k => Math.abs(SCALE_PRESETS[k] - state.scaleFactor) < 0.001) || 'custom';
+    updateActiveStyleButtons();
+}
+
+function setupResize() {
+    const slider = document.getElementById('size-slider');
+    const label = document.getElementById('size-value');
+    // Live label while dragging; the window follows on release so the panel
+    // doesn't move under the cursor mid-drag
+    slider.addEventListener('input', () => { label.textContent = `${slider.value}%`; });
+    slider.addEventListener('change', () => setScaleFactor(Number(slider.value) / 100, true));
+
+    // Corner grip: the window's bottom-right corner follows the cursor
+    const grip = document.getElementById('resize-grip');
+    let startX = 0, startY = 0, startW = 1, startH = 1, startFactor = 1, frame = null;
+
+    grip.addEventListener('mousedown', (e) => {
+        state.resizing = true;
+        startX = e.screenX;
+        startY = e.screenY;
+        startW = Math.max(1, window.outerWidth);
+        startH = Math.max(1, window.outerHeight);
+        startFactor = state.scaleFactor;
+        elements.body.classList.add('resizing');
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!state.resizing) return;
+        const dx = e.screenX - startX;
+        const dy = e.screenY - startY;
+        const factor = startFactor * (((startW + dx) / startW) + ((startH + dy) / startH)) / 2;
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+            frame = null;
+            setScaleFactor(factor, false);
+        });
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!state.resizing) return;
+        state.resizing = false;
+        elements.body.classList.remove('resizing');
+        savePreferences();
+    });
 }
 
 function setLyricBrightness(value, save) {
@@ -625,6 +742,12 @@ function setPrefToggle(pref, on) {
     if (pref === 'laMirror') {
         // Listen-along guest option, lives in the main process (not a saved pref)
         window.electronAPI.listenAlong.setMirror(on).then(renderListenAlong);
+        return;
+    }
+
+    if (pref === 'clickThroughLock') {
+        // About the window, not the page — lives in the main process
+        window.electronAPI.setClickThroughLock(on).then(applyPlayerInfo);
         return;
     }
 
@@ -674,7 +797,8 @@ function updateActiveStyleButtons() {
         lyric: state.lyricStyle,
         visualizer: state.visualizerStyle,
         layout: state.layoutMode,
-        scale: state.scaleMode
+        scale: state.scaleMode,
+        source: state.playerSource
     };
 
     elements.styleBtns.forEach(btn => {
@@ -690,7 +814,8 @@ function loadPreferences() {
             if (prefs.lyricStyle) setLyricStyle(prefs.lyricStyle);
             if (prefs.visualizerStyle) setVisualizerStyle(prefs.visualizerStyle);
             if (prefs.layoutMode) setLayoutMode(prefs.layoutMode);
-            if (prefs.scaleMode) setScaleMode(prefs.scaleMode);
+            if (typeof prefs.scaleFactor === 'number') setScaleFactor(prefs.scaleFactor, false);
+            else if (prefs.scaleMode) setScaleMode(prefs.scaleMode);
             if (prefs.lyricBrightness) {
                 setLyricBrightness(prefs.lyricBrightness, false);
                 document.getElementById('brightness-slider').value = prefs.lyricBrightness;
@@ -718,6 +843,7 @@ function savePreferences() {
         fireworksOn: state.fireworksOn,
         dailyRecap: state.dailyRecap,
         scaleMode: state.scaleMode,
+        scaleFactor: state.scaleFactor,
         lyricBrightness: state.lyricBrightness,
         tiltOn: state.tiltOn,
         vinylOn: state.vinylOn,
@@ -775,6 +901,58 @@ function renderListenAlong(status) {
 }
 
 // ============================================================================
+// NOW-PLAYING SOURCE (the Spotify app on this computer vs. the Web API)
+// ============================================================================
+function applyPlayerInfo(info) {
+    if (!info) return;
+    state.playerInfo = info;
+    state.playerSource = info.source || 'auto';
+    state.clickThroughLock = Boolean(info.clickThroughLock);
+    updateActiveStyleButtons();
+    syncToggleInputs();
+
+    const status = document.getElementById('source-status');
+    if (status) {
+        let text;
+        if (info.active === 'local') {
+            text = `Reading ${info.localDescription || 'the Spotify app'} — no API keys or Premium needed.`;
+        } else if (info.connected) {
+            text = 'Using the Spotify Web API with your keys.';
+        } else if (info.configured) {
+            text = 'Web API keys saved but not signed in — press 🔄 Spotify.';
+        } else {
+            text = info.localAvailable
+                ? 'No Web API keys (🔑) — pick Auto or Spotify app instead.'
+                : 'Add Spotify API keys (🔑) to get started.';
+        }
+        status.textContent = text;
+    }
+    const localBtn = document.querySelector('.style-btn[data-style="source"][data-value="local"]');
+    if (localBtn) localBtn.disabled = !info.localAvailable;
+
+    // Setup card copy: optional on Mac/Windows, the only way in elsewhere
+    document.getElementById('setup-note-local').classList.toggle('hidden', !info.localAvailable);
+    document.getElementById('setup-note-api').classList.toggle('hidden', Boolean(info.localAvailable));
+    document.getElementById('setup-title').textContent = info.localAvailable
+        ? '🔑 Spotify API keys (optional)'
+        : '🎧 Connect your Spotify';
+    document.getElementById('setup-skip').textContent = info.localAvailable
+        ? 'Close — Cadence already works without this'
+        : 'Skip for now — I just want to listen along with a friend';
+}
+
+async function setPlayerSource(source) {
+    try {
+        applyPlayerInfo(await window.electronAPI.setPlayerSource(source));
+        // Re-render on the next poll so the display flips to the new source
+        state.previousTrackId = null;
+        fetchCurrentTrack();
+    } catch (e) {
+        console.error('Could not change source:', e);
+    }
+}
+
+// ============================================================================
 // SPOTIFY POLLING
 // ============================================================================
 function startPolling() {
@@ -817,6 +995,11 @@ async function fetchCurrentTrack() {
                 if (track.album_art) {
                     extractDominantColor(track.album_art);
                 }
+            } else if (track.album_art && state.currentTrack && track.album_art !== state.currentTrack.album_art) {
+                // Art that arrived after the track did (Windows looks it up separately)
+                state.currentTrack = track;
+                updateTrackDisplay(track);
+                extractDominantColor(track.album_art);
             }
 
             // Update state for interpolation
@@ -850,10 +1033,17 @@ async function fetchCurrentTrack() {
                 state.previousTrackId = null;
                 resetDisplay();
             }
-            // Listen-along guest with nothing from the host yet
+            // Why there's nothing: "Open Spotify…", a permission hint, etc.
             if (result && result.listenAlong && result.listenAlong.waitingFor) {
+                // Listen-along guest with nothing from the host yet
                 elements.trackName.textContent = 'Listening along';
                 elements.artistName.textContent = `Waiting for ${result.listenAlong.waitingFor}…`;
+            } else if (result && result.message && result.source === 'local') {
+                elements.artistName.textContent = result.message;
+            } else if (result && result.needs_setup) {
+                elements.artistName.textContent = 'Connect to Spotify (gear → 🔑)';
+            } else if (result && result.needs_auth) {
+                elements.artistName.textContent = 'Sign in to Spotify again (gear → 🔄)';
             }
             state.isPlaying = false;
             elements.body.classList.remove('is-playing');

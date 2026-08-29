@@ -29,8 +29,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Playback control: 'play' | 'pause' | 'next' | 'previous' | 'seek'
     controlPlayback: (command, positionMs) => ipcRenderer.invoke('playback-control', command, positionMs),
 
-    // Scale the window for the Size dial
-    resizeWindow: (factor) => ipcRenderer.send('resize-window', factor),
+    // Scale the window (Size slider / corner drag); resolves to the factor
+    // actually applied after clamping to the screen
+    resizeWindow: (factor) => ipcRenderer.invoke('resize-window', factor),
 
     // Ambient mode notifications from the main process
     onAmbientMode: (callback) => {
@@ -40,12 +41,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Spotify token refresh
     refreshSpotifyToken: () => ipcRenderer.invoke('refresh-spotify-token'),
 
-    // Spotify API credentials (first-run setup)
+    // Spotify API credentials (optional) + where "now playing" comes from
     getCredentialsStatus: () => ipcRenderer.invoke('get-credentials-status'),
     saveCredentials: (clientId, clientSecret) => ipcRenderer.invoke('save-credentials', { clientId, clientSecret }),
+    setPlayerSource: (source) => ipcRenderer.invoke('set-player-source', source),
+    setClickThroughLock: (on) => ipcRenderer.invoke('set-click-through-lock', on),
+    onPlayerInfo: (callback) => {
+        ipcRenderer.on('player-info', (event, info) => callback(info));
+    },
 
     // Mouse event control for click-through
     setIgnoreMouse: (ignore) => ipcRenderer.send('set-ignore-mouse', ignore),
+    // Whether a panel (settings / setup / recap) is open — the click-through
+    // lock only lets the overlay capture the mouse while one is
+    setPanelOpen: (open) => ipcRenderer.send('panel-open', open),
 
     // Window movement for drag
     moveWindow: (deltaX, deltaY) => ipcRenderer.send('move-window', { deltaX, deltaY }),
@@ -61,6 +70,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // The tray menu / a cadence:// link asked for the settings panel
     onOpenSettings: (callback) => {
         ipcRenderer.on('open-settings', () => callback());
+    },
+    // Ctrl/Cmd+Shift+L
+    onToggleSettings: (callback) => {
+        ipcRenderer.on('toggle-settings', () => callback());
     },
 
     // Listen along (share a code, follow a friend's lyrics)

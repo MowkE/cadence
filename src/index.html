@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co https://*.mzstatic.com https://*.dzcdn.net;">
     <title>Cadence</title>
 
     <!-- Google Fonts -->
@@ -106,6 +106,9 @@
         </svg>
     </button>
 
+    <!-- Corner grip: drag to resize the overlay -->
+    <div id="resize-grip" title="Drag to resize">⤡</div>
+
     <!-- Settings Menu (Hidden by default) -->
     <div id="settings-menu" class="hidden">
         <div class="settings-header">
@@ -175,6 +178,17 @@
                         <span>Large</span>
                     </button>
                 </div>
+                <div class="size-row">
+                    <input type="range" id="size-slider" class="brightness-slider" min="50" max="250" step="5" value="100">
+                    <span id="size-value" class="size-value">100%</span>
+                </div>
+                <div class="la-hint">Or drag the ⤡ corner of the overlay.</div>
+                <label class="toggle-row">
+                    <span class="toggle-label">Click-through lock</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="clickThroughLock">
+                    <span class="toggle-switch"></span>
+                </label>
+                <div class="la-hint">Clicks always pass through the overlay. Open Settings from the tray icon or with <span class="setup-em">Ctrl/⌘ + Shift + L</span>.</div>
             </div>
 
             <div class="settings-section">
@@ -268,6 +282,25 @@
                 </label>
             </div>
 
+            <div class="settings-section" id="source-section">
+                <h3>Spotify</h3>
+                <div class="style-options">
+                    <button class="style-btn active" data-style="source" data-value="auto">
+                        <span class="style-preview scale-preview">A</span>
+                        <span>Auto</span>
+                    </button>
+                    <button class="style-btn" data-style="source" data-value="local">
+                        <span class="style-preview scale-preview">💻</span>
+                        <span>Spotify app</span>
+                    </button>
+                    <button class="style-btn" data-style="source" data-value="api">
+                        <span class="style-preview scale-preview">🔑</span>
+                        <span>Web API</span>
+                    </button>
+                </div>
+                <div class="la-hint" id="source-status"></div>
+            </div>
+
             <div class="settings-section" id="listen-along-section">
                 <h3>Listen along</h3>
 
@@ -332,9 +365,12 @@
         </div>
     </div>
 
-    <!-- First-run Spotify API setup -->
+    <!-- Spotify API keys: optional on Mac/Windows (the Spotify app is read
+         directly), the only way in elsewhere -->
     <div id="setup-card" class="hidden">
-        <h2>🎧 Connect your Spotify</h2>
+        <h2 id="setup-title">🎧 Connect your Spotify</h2>
+        <p class="setup-note hidden" id="setup-note-local">Cadence already reads the Spotify app on this computer — you can close this. API keys are optional: they add following playback on your other devices and, on Windows, playing along in a friend's session. Spotify requires <b>Premium</b> to create an app (since Feb 2026).</p>
+        <p class="setup-note" id="setup-note-api">Cadence reads what you're playing through Spotify's API with your own keys. Spotify requires a <b>Premium</b> account to create an app.</p>
         <ol class="setup-steps">
             <li>Go to <span class="setup-em">developer.spotify.com/dashboard</span> and create an app</li>
             <li>Add <span class="setup-em">http://127.0.0.1:8888/callback</span> as the Redirect URI</li>

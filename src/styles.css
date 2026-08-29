@@ -2386,3 +2386,90 @@ body.layout-focus #progress-arc {
 body.layout-focus #playback-controls {
     top: 79px;
 }
+/* ============================================================================
+   SIZE SLIDER + CORNER RESIZE GRIP
+   ============================================================================ */
+.size-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.size-row .brightness-slider {
+    flex: 1;
+    min-width: 0;
+}
+
+.size-value {
+    font-size: 11px;
+    color: var(--text-secondary);
+    min-width: 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+#resize-grip {
+    position: fixed;
+    right: 10px;
+    bottom: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow: 0 0 10px rgba(var(--dominant-color-rgb), 0.35);
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    user-select: none;
+    z-index: 2500;
+}
+
+body:hover #resize-grip,
+body.resizing #resize-grip {
+    opacity: 0.9;
+}
+
+/* Full layout insets the card for tilt headroom — hug the card's corner */
+body.layout-full #resize-grip {
+    right: 62px;
+    bottom: 26px;
+}
+
+body.ambient-mode #resize-grip,
+body.layout-ticker #resize-grip {
+    display: none;
+}
+
+body.resizing {
+    cursor: nwse-resize;
+}
+
+/* ============================================================================
+   NOW-PLAYING SOURCE + SETUP CARD NOTES
+   ============================================================================ */
+.style-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.setup-note {
+    margin: 0 0 12px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.setup-note b {
+    color: var(--text-primary);
+    font-weight: 600;
+}

@@ -2,13 +2,14 @@
  * Cadence — Electron main process
  *
  * - Transparent, frameless, always-on-top, click-through overlay window
- * - Spotify auth + polling + playback control (lib/spotify.js, pure Node)
+ * - Now playing from the Spotify app on this computer (lib/local-player.js) —
+ *   no developer app or Premium needed — or from the Web API (lib/spotify.js)
  * - Synced lyrics from LRCLIB (lib/lyrics.js), Genius as fallback
  * - Listen along: share a code/link, friends follow your lyrics (lib/listen-along.js)
  * - Tray icon (the only way to quit on Windows), cadence:// deep links
  */
 
-const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -17,6 +18,7 @@ const cheerio = require('cheerio');
 const { createSpotifyClient } = require('./lib/spotify');
 const { getSyncedLyrics } = require('./lib/lyrics');
 const { createListenAlong } = require('./lib/listen-along');
+const { createLocalPlayer } = require('./lib/local-player');
 
 // .env is a development convenience only — user credentials live in a
 // per-user config file (see loadCredentials)
@@ -95,12 +97,26 @@ function legacyTokenCaches() {
     ];
 }
 
-let settings = { relay: null };
+// source: where "now playing" comes from — 'auto' (the Web API while it's
+// connected, otherwise the Spotify app on this computer), 'local' or 'api'.
+// clickThroughLock: the overlay never captures the mouse unless a panel is
+// open (Settings then comes from the tray icon or Ctrl/Cmd+Shift+L).
+let settings = { relay: null, source: 'auto', clickThroughLock: false };
 function loadSettings() {
     try {
         settings = { ...settings, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) };
     } catch (e) { /* defaults */ }
     if (process.env.CADENCE_RELAY) settings.relay = process.env.CADENCE_RELAY;
+    if (process.env.CADENCE_SOURCE) settings.source = process.env.CADENCE_SOURCE;
+}
+
+function saveSettings() {
+    try {
+        fs.mkdirSync(userDataPath(), { recursive: true });
+        fs.writeFileSync(settingsPath(), JSON.stringify(settings));
+    } catch (e) {
+        console.error('Could not save settings:', e.message);
+    }
 }
 
 // ============================================================================
@@ -146,9 +162,12 @@ function credentialsConfigured() {
 // SPOTIFY + LISTEN ALONG CLIENTS
 // ============================================================================
 let spotify = null;
+let localPlayer = null;
 let listenAlong = null;
 
 function createClients() {
+    localPlayer = createLocalPlayer();
+
     spotify = createSpotifyClient({
         tokenFile: tokenPath(),
         getCredentials: () => ({ clientId: SPOTIFY_CLIENT_ID, clientSecret: SPOTIFY_CLIENT_SECRET }),
@@ -167,7 +186,7 @@ function createClients() {
 
     listenAlong = createListenAlong({
         getRelayBase: () => settings.relay,
-        spotify,
+        player,
         onStatus: (status) => {
             if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('listen-along-status', status);
             updateTrayMenu();
@@ -175,10 +194,72 @@ function createClients() {
     });
 }
 
-ipcMain.handle('get-credentials-status', () => ({
-    configured: credentialsConfigured(),
-    connected: spotify ? spotify.isConnected() : false
-}));
+// ============================================================================
+// PLAYER: which source feeds "now playing" and playback control
+// ============================================================================
+const SOURCES = ['auto', 'local', 'api'];
+
+function sourcePreference() {
+    return SOURCES.includes(settings.source) ? settings.source : 'auto';
+}
+
+function apiReady() {
+    return credentialsConfigured() && Boolean(spotify && spotify.isConnected());
+}
+
+// 'auto' keeps the API for people who already connected it and reads the
+// Spotify app on this computer for everyone else
+function resolveSource() {
+    const pref = sourcePreference();
+    const localOk = Boolean(localPlayer && localPlayer.available);
+    if (pref === 'api') return 'api';
+    if (pref === 'local') return localOk ? 'local' : 'api';
+    if (apiReady()) return 'api';
+    return localOk ? 'local' : 'api';
+}
+
+// One object for everything downstream (IPC, listen along) — each call goes
+// to the API client or the local player depending on the current source
+const player = {
+    source: resolveSource,
+    isConnected: () => resolveSource() === 'local' || spotify.isConnected(),
+    getCurrentTrack: () => resolveSource() === 'local' ? localPlayer.getCurrentTrack() : spotify.getCurrentTrack(),
+    control: (command, positionMs) => resolveSource() === 'local'
+        ? localPlayer.control(command, positionMs)
+        : spotify.control(command, positionMs),
+    playTrack: (uri, positionMs) => resolveSource() === 'local'
+        ? localPlayer.playTrack(uri, positionMs)
+        : spotify.playTrack(uri, positionMs),
+    getProfile: () => resolveSource() === 'local' ? localPlayer.getProfile() : spotify.getProfile()
+};
+
+function playerInfo() {
+    return {
+        configured: credentialsConfigured(),
+        connected: spotify ? spotify.isConnected() : false,
+        source: sourcePreference(),
+        active: resolveSource(),
+        localAvailable: Boolean(localPlayer && localPlayer.available),
+        localDescription: localPlayer ? localPlayer.description : null,
+        localCanPlayTrack: Boolean(localPlayer && localPlayer.canPlayTrack),
+        platform: process.platform,
+        clickThroughLock: Boolean(settings.clickThroughLock)
+    };
+}
+
+ipcMain.handle('get-credentials-status', () => playerInfo());
+
+ipcMain.handle('set-player-source', (event, source) => {
+    settings.source = SOURCES.includes(source) ? source : 'auto';
+    saveSettings();
+    console.log('Now-playing source:', settings.source, '→', resolveSource());
+    return playerInfo();
+});
+
+ipcMain.handle('set-click-through-lock', (event, on) => {
+    setClickThroughLock(Boolean(on));
+    return playerInfo();
+});
 
 ipcMain.handle('save-credentials', async (event, { clientId, clientSecret }) => {
     SPOTIFY_CLIENT_ID = String(clientId || '').trim();
@@ -325,6 +406,12 @@ function updateTrayMenu() {
                 mainWindow.webContents.send('open-settings');
             }
         },
+        {
+            label: 'Click-through lock',
+            type: 'checkbox',
+            checked: Boolean(settings.clickThroughLock),
+            click: (item) => setClickThroughLock(item.checked)
+        },
         { type: 'separator' },
         ...(sessionLabel ? [
             { label: sessionLabel, enabled: false },
@@ -344,11 +431,35 @@ function updateTrayMenu() {
 // IPC HANDLERS - Communication between Main and Renderer
 // ============================================================================
 
-// Toggle click-through based on mouse position (for settings button)
+// Click-through. The renderer asks to capture the mouse while the cursor is
+// over something interactive; with the click-through lock on, that's only
+// honoured while a panel (settings / setup / recap) is open, so the lyrics
+// can never sit in the way of whatever is underneath.
+let rendererWantsIgnore = true;
+let panelOpen = false;
+
+function applyMouseIgnore() {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const ignore = settings.clickThroughLock && !panelOpen ? true : rendererWantsIgnore;
+    mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
+}
+
+function setClickThroughLock(on) {
+    settings.clickThroughLock = Boolean(on);
+    saveSettings();
+    applyMouseIgnore();
+    updateTrayMenu();
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('player-info', playerInfo());
+}
+
 ipcMain.on('set-ignore-mouse', (event, ignore) => {
-    if (mainWindow) {
-        mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
-    }
+    rendererWantsIgnore = Boolean(ignore);
+    applyMouseIgnore();
+});
+
+ipcMain.on('panel-open', (event, open) => {
+    panelOpen = Boolean(open);
+    applyMouseIgnore();
 });
 
 // Move window by delta (for drag-to-move feature)
@@ -361,21 +472,38 @@ ipcMain.on('move-window', (event, { deltaX, deltaY }) => {
 
 // Playback control (play / pause / next / previous / seek)
 ipcMain.handle('playback-control', async (event, command, positionMs) => {
-    return spotify.control(command, positionMs);
+    return player.control(command, positionMs);
 });
 
-// Scale the window (Size dial)
-ipcMain.on('resize-window', (event, factor) => {
-    windowScale = factor;
-    if (mainWindow && !ambientActive) {
+// Scale the window (Size slider / presets / corner drag). Clamped so the
+// overlay always fits the screen; returns the factor actually applied so the
+// renderer's zoom stays in step with the window.
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 2.5;
+
+function applyWindowScale(factor) {
+    let f = Number(factor);
+    if (!Number.isFinite(f)) f = 1;
+    const display = mainWindow && !mainWindow.isDestroyed()
+        ? screen.getDisplayMatching(mainWindow.getBounds())
+        : screen.getPrimaryDisplay();
+    const area = display.workArea;
+    const fit = Math.min((area.width - 16) / WINDOW_WIDTH, (area.height - 16) / WINDOW_HEIGHT);
+    windowScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, fit, f));
+
+    if (mainWindow && !mainWindow.isDestroyed() && !ambientActive) {
         const [x, y] = mainWindow.getPosition();
-        setWindowBounds({
-            x, y,
-            width: Math.round(WINDOW_WIDTH * factor),
-            height: Math.round(WINDOW_HEIGHT * factor)
-        });
+        const width = Math.round(WINDOW_WIDTH * windowScale);
+        const height = Math.round(WINDOW_HEIGHT * windowScale);
+        // Keep the whole overlay on screen as it grows
+        const nx = Math.max(area.x, Math.min(x, area.x + area.width - width));
+        const ny = Math.max(area.y, Math.min(y, area.y + area.height - height));
+        setWindowBounds({ x: nx, y: ny, width, height });
     }
-});
+    return windowScale;
+}
+
+ipcMain.handle('resize-window', (event, factor) => applyWindowScale(factor));
 
 // Manual Spotify token refresh (triggered by UI button)
 ipcMain.handle('refresh-spotify-token', async () => {
@@ -391,10 +519,17 @@ ipcMain.handle('get-current-track', async () => {
     if (listenAlong.isGuest()) {
         return listenAlong.guestTrackResult();
     }
-    if (!credentialsConfigured()) {
-        return { success: false, error: 'Spotify API keys not set', needs_setup: true };
+    const source = resolveSource();
+    let result;
+    if (source === 'local') {
+        result = await localPlayer.getCurrentTrack();
+    } else {
+        if (!credentialsConfigured()) {
+            return { success: false, error: 'Spotify API keys not set', needs_setup: true, source };
+        }
+        result = await spotify.getCurrentTrack();
     }
-    const result = await spotify.getCurrentTrack();
+    result.source = source;
     recordPlayback(result);
     listenAlong.onHostPoll(result);
     return result;
@@ -681,6 +816,29 @@ app.whenReady().then(() => {
     createClients();
     createWindow();
     createTray();
+    console.log('Now-playing source:', sourcePreference(), '→', resolveSource());
+
+    // Windows: a fullscreen app (game, video) can end up above the overlay and
+    // it never comes back on its own — re-assert the topmost flag so it stays
+    // visible over borderless-fullscreen apps
+    if (process.platform === 'win32') {
+        setInterval(() => {
+            if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+            mainWindow.setAlwaysOnTop(true, 'screen-saver');
+        }, 1500);
+    }
+
+    // Ctrl/Cmd+Shift+L toggles the settings panel from anywhere — the way in
+    // when the click-through lock makes the gear button unclickable
+    try {
+        globalShortcut.register('CommandOrControl+Shift+L', () => {
+            if (!mainWindow) createWindow();
+            mainWindow.show();
+            mainWindow.webContents.send('toggle-settings');
+        });
+    } catch (e) {
+        console.error('Could not register shortcut:', e.message);
+    }
 
     // First launch after the upgrade with keys but no tokens: start sign-in
     // (existing users get their tokens imported from the old Python cache)
@@ -730,9 +888,14 @@ app.on('window-all-closed', () => {
     // The tray keeps the app alive on every platform; Quit lives in its menu
 });
 
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+});
+
 app.on('before-quit', (event) => {
     saveDailyStats();
     if (spotify) spotify.shutdown();
+    if (localPlayer) localPlayer.shutdown();
     // Tell listeners we're leaving before the process dies (best effort, 1s cap)
     if (listenAlong && !shuttingDown && (listenAlong.isHost() || listenAlong.isGuest())) {
         event.preventDefault();

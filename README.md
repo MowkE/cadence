@@ -58,6 +58,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 - **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
 - **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
+- **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, beat tap, type the line; solo or with your session
 - **Shortcuts and auto-hide** — global hotkeys to show/hide the overlay, and fade-out after N minutes of silence
 - **Three lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI
@@ -102,9 +103,27 @@ Share your music with a friend who also has Cadence:
 
 **Names:** the host's panel lists who's listening by name. Cadence uses your Spotify display name (Web API) or your account name on this computer; set anything you like in gear → **Listen along** → *Your name*.
 
+**Handoff:** each listener in the host's panel has a 🎧→ button — press it and that friend becomes the host while you keep listening. If the host quits Cadence with people still listening, the session hands itself to the first listener instead of ending.
+
 **Song requests:** guests paste a Spotify song link (Spotify → Share → Copy Song Link) or press **Request what I'm playing**. The host sees the request with album art and who asked, and can **▶ play it now**, **＋ queue it** (Web API only), or **✕ pass** — guests get told which happened.
 
 How it works: your overlay publishes tiny "state" messages (track, position, playing) to a private, randomly named topic on [ntfy.sh](https://ntfy.sh) — only when something changes, never your audio or account. Guests subscribe to that topic. Anyone with the code can follow, so share it like a party invite. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
+
+## Karaoke & games
+
+Gear → **🎤 Open Karaoke & games**. A setlist of room games that run on the synced lyric timing Cadence already has — no microphone, no extra accounts. Everyone in your listen-along session gets a colour, and that's how people show up in every game. The host starts the friends games; everyone's overlay follows.
+
+| Game | Who | What |
+| --- | --- | --- |
+| **Karaoke** | anyone | The overlay goes full-screen: big lyrics that fill as each line plays, a countdown through instrumental gaps, the next line waiting below. |
+| **Guess the song** | friends | The title and art hide for everyone but the host, who DJs. Friends race to name the song — first correct answer wins the round, earlier is worth more, the host drops hints at 20 s and 45 s. Skipping to the next song starts a new round. |
+| **Duet** | friends | The host picks two people. Alternate lines, switch every verse, or *pass the mic* at random; chorus is for both. Your lines pulse in your colour. |
+| **Hot mic** | friends | Every line is dealt to someone in the room, the chorus to everyone. Your name shows a line ahead, so you can see yours coming. |
+| **Lyric liar** | friends | A line a little way ahead is hidden from everyone's lyrics. Each person writes a fake version, then the room votes on which is real. 3 points for spotting the real one, 2 for every vote your fake takes. Rounds are timed off the song itself. |
+| **Finish the line** | friends | The last words of an upcoming line vanish from everyone's lyrics. Type them before the line plays — fastest correct answer wins it, everyone else who's right still scores. |
+| **Beat tap** | solo | Every lyric line is a note sliding toward the bar — hit space (or click) as it lands. Perfect / Good / OK, combos, accuracy. |
+
+Press **Esc** to leave a game or close the panel.
 
 ## Usage
 

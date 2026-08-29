@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // actually applied after clamping to the screen
     resizeWindow: (factor) => ipcRenderer.invoke('resize-window', factor),
 
+    // Fill the screen (karaoke / duet); resolves to the new state
+    setOverlayFullscreen: (on) => ipcRenderer.invoke('overlay-fullscreen', on),
+
     // Ambient mode notifications from the main process
     onAmbientMode: (callback) => {
         ipcRenderer.on('ambient-mode', (event, on) => callback(on));
@@ -88,6 +91,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         // Guest: { link } or { current: true }. Host: reqId + 'play' | 'queue' | 'dismiss'
         request: (payload) => ipcRenderer.invoke('listen-along-request', payload),
         requestAction: (reqId, action) => ipcRenderer.invoke('listen-along-request-action', reqId, action),
+        // Host: pass the session to a listener
+        handoff: (toId) => ipcRenderer.invoke('listen-along-handoff', toId),
+        // Karaoke & games traffic (any JSON; { game, action, ... })
+        sendGame: (payload) => ipcRenderer.invoke('listen-along-game', payload),
+        onGame: (callback) => {
+            ipcRenderer.on('listen-along-game', (event, msg) => callback(msg));
+        },
         onStatus: (callback) => {
             ipcRenderer.on('listen-along-status', (event, status) => callback(status));
         }

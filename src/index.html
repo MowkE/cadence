@@ -106,6 +106,28 @@
         </svg>
     </button>
 
+    <!-- Karaoke & games: hub + game screens (src/games.js) -->
+    <div id="games-panel" class="hidden">
+        <div class="games-header">
+            <button id="games-back" class="games-nav hidden" title="Back to games">‹</button>
+            <h2 id="games-title">Karaoke &amp; games</h2>
+            <button id="games-close" class="games-nav" title="Close">✕</button>
+        </div>
+        <div id="games-status" class="games-status hidden"></div>
+        <div id="games-hub" class="games-hub"></div>
+        <div id="games-screen" class="games-screen hidden"></div>
+    </div>
+
+    <!-- Karaoke layer: big lyrics for Karaoke and Duet -->
+    <div id="karaoke-layer">
+        <div id="kk-singer" class="kk-singer"></div>
+        <div id="kk-prev" class="kk-line kk-prev"></div>
+        <div id="kk-current" class="kk-line kk-current"><span class="kk-fill"></span><span class="kk-base"></span></div>
+        <div id="kk-next" class="kk-line kk-next"></div>
+        <div id="kk-gap" class="kk-gap"></div>
+        <div id="kk-meta" class="kk-meta"></div>
+    </div>
+
     <!-- Corner grip: drag to resize the overlay -->
     <div id="resize-grip" title="Drag to resize">⤡</div>
 
@@ -355,6 +377,7 @@
                 <div id="la-hosting" class="hidden">
                     <div class="la-code" id="la-code" title="Click to copy">ABCD-EFGH</div>
                     <div class="la-hint" id="la-listeners">Share the code or link with friends</div>
+                    <div id="la-listener-list" class="la-listeners"></div>
                     <div id="la-requests" class="la-requests"></div>
                     <div class="la-actions">
                         <button id="la-copy-btn" class="action-btn la-btn">Copy link</button>
@@ -382,6 +405,12 @@
                 </div>
 
                 <div class="la-hint la-msg" id="la-msg"></div>
+            </div>
+
+            <div class="settings-section" id="games-section">
+                <h3>Karaoke &amp; games</h3>
+                <button id="games-btn" class="action-btn la-btn">🎤 Open Karaoke &amp; games</button>
+                <div class="la-hint">Karaoke, duets, guess the song, and three more — solo or with the friends in your session.</div>
             </div>
 
             <div class="settings-footer">
@@ -465,6 +494,7 @@
     </div>
 
     <!-- Main Renderer Script -->
+    <script src="games.js"></script>
     <script src="renderer.js"></script>
 </body>
 

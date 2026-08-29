@@ -375,7 +375,7 @@ function setupEventListeners() {
 
     // Tell the main process when a panel is open (the click-through lock only
     // lets the overlay take the mouse while one is)
-    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card')];
+    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel')];
     const notifyPanelOpen = () => {
         state.panelOpen = panels.some(p => p && !p.classList.contains('hidden'));
         window.electronAPI.setPanelOpen(state.panelOpen);
@@ -461,13 +461,35 @@ function setupEventListeners() {
     document.getElementById('la-leave-btn').addEventListener('click', leaveSession);
 
     window.electronAPI.listenAlong.onStatus((status) => {
-        const wasGuest = state.laStatus && state.laStatus.mode === 'guest';
+        const prevMode = state.laStatus ? state.laStatus.mode : 'off';
         renderListenAlong(status);
-        // Session ended under us (host left): re-render from our own Spotify
-        if (wasGuest && status.mode === 'off') {
+        if (window.Games) Games.onRoom();
+        // Role changed under us (host left, or a handoff): re-render from the
+        // right source — our own Spotify, or the new host's stream
+        if (prevMode !== status.mode) {
             state.previousTrackId = null;
             fetchCurrentTrack();
         }
+    });
+
+    // Hand the session to a listener
+    document.getElementById('la-listener-list').addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-handoff]');
+        if (!btn) return;
+        btn.disabled = true;
+        const r = await window.electronAPI.listenAlong.handoff(btn.dataset.handoff);
+        if (r && r.status) renderListenAlong(r.status);
+        if (r && !r.success && r.error) laMsg.textContent = r.error;
+    });
+
+    // Karaoke & games
+    if (window.Games) Games.init();
+    document.getElementById('games-btn').addEventListener('click', () => {
+        elements.settingsMenu.classList.add('hidden');
+        Games.open();
+    });
+    window.electronAPI.listenAlong.onGame((msg) => {
+        if (window.Games) Games.onGameMessage(msg);
     });
 
     // Song requests: guests send them, the host's list acts on them
@@ -587,9 +609,14 @@ function setupMouseTracking() {
         const isOverGrip = !elements.body.classList.contains('ambient-mode') &&
             isPointInRect(e.clientX, e.clientY, document.getElementById('resize-grip').getBoundingClientRect());
 
+        // Karaoke & games panel
+        const gamesPanel = document.getElementById('games-panel');
+        const isOverGames = !gamesPanel.classList.contains('hidden') &&
+            isPointInRect(e.clientX, e.clientY, gamesPanel.getBoundingClientRect());
+
         // If over interactive elements, capture mouse events
         if (isOverSettings || isOverMenu || isOverRecap || isOverControls || isOverArc || isOverPuck ||
-            isOverSetup || isOverGrip || state.scrubbing || state.resizing) {
+            isOverSetup || isOverGrip || isOverGames || state.scrubbing || state.resizing) {
             window.electronAPI.setIgnoreMouse(false);
         } else {
             window.electronAPI.setIgnoreMouse(true);
@@ -971,10 +998,10 @@ function renderListenAlong(status) {
     if (status.mode === 'host') {
         document.getElementById('la-code').textContent = status.code;
         const n = status.listeners || 0;
-        const names = (status.listenerNames || []).filter(Boolean);
         document.getElementById('la-listeners').textContent = n === 0
             ? 'Share the code or link with friends — they can join from Cadence'
-            : `Listening with you: ${names.join(', ')}`;
+            : `${n === 1 ? '1 friend is' : `${n} friends are`} listening with you. 🎧→ hands them the session.`;
+        renderListeners(status.listenersDetail || []);
         renderRequests(status.requests || [], Boolean(status.canQueue));
     } else if (status.mode === 'guest') {
         document.getElementById('la-req-note').textContent = status.requestNote || '';
@@ -992,10 +1019,23 @@ function renderListenAlong(status) {
     if (status.message) msg.textContent = status.message;
     else if (status.mode !== 'off') msg.textContent = '';
 
-    if (status.mode !== 'host') renderRequests([], false);
+    if (status.mode !== 'host') {
+        renderRequests([], false);
+        renderListeners([]);
+    }
 
     // Playback controls act on *your* Spotify; hide them while following a host
     elements.body.classList.toggle('listen-along-guest', status.mode === 'guest');
+}
+
+// Host: who's listening, each with a "hand off the session" button
+function renderListeners(listeners) {
+    const box = document.getElementById('la-listener-list');
+    box.innerHTML = listeners.map(l => `
+        <div class="la-listener">
+            <span class="la-listener-name">${escapeHtmlText(l.name)}</span>
+            <button class="la-req-btn la-handoff" data-handoff="${escapeHtmlText(l.id)}" title="Hand the session to ${escapeHtmlText(l.name)}">🎧→</button>
+        </div>`).join('');
 }
 
 function escapeHtmlText(s) {
@@ -1115,6 +1155,7 @@ async function fetchCurrentTrack() {
 
         if (result && result.success && result.track) {
             const track = result.track;
+            state.emptyPolls = 0;
 
             // Check if track changed
             if (track.id !== state.previousTrackId) {
@@ -1133,6 +1174,8 @@ async function fetchCurrentTrack() {
 
                 // Fetch synced lyrics from LRCLIB
                 fetchLyrics(track);
+
+                if (window.Games) Games.onTrackChange(track);
 
                 // Fetch audio analysis
                 fetchAudioAnalysis(track.id);
@@ -1171,13 +1214,18 @@ async function fetchCurrentTrack() {
             }
 
         } else {
-            // No track playing
-            if (state.currentTrack !== null) {
+            // No track playing. One empty poll can be a Spotify hiccup, so
+            // the display only resets after two in a row (~4s) — otherwise
+            // lyrics would flicker and re-fetch for nothing.
+            state.emptyPolls = (state.emptyPolls || 0) + 1;
+            if (state.currentTrack !== null) console.log('Empty poll', state.emptyPolls, JSON.stringify(result).slice(0, 200));
+            if (state.currentTrack !== null && state.emptyPolls >= 2) {
                 state.currentTrack = null;
                 // Forget the last track so the display re-renders when
                 // playback resumes with the same song
                 state.previousTrackId = null;
                 resetDisplay();
+                if (window.Games) Games.onTrackChange(null);
             }
             // Why there's nothing: "Open Spotify…", a permission hint, etc.
             if (result && result.listenAlong && result.listenAlong.waitingFor) {
@@ -1251,8 +1299,17 @@ function updateTrackDisplay(track) {
         elements.albumArtPlaceholder.classList.remove('hidden');
     }
 
+    if (window.Games) Games.applyTitleMask(); // Guess the song hides the title
     updateTicker();
     updateAmbient();
+}
+
+// "Song — Artist", unless a game is hiding it
+function trackLabel() {
+    const t = state.currentTrack;
+    if (!t) return '';
+    if (window.Games && Games.hidesTitle()) return Games.maskedLabel();
+    return `${t.name} — ${t.artist}`;
 }
 
 function resetDisplay() {
@@ -1401,6 +1458,7 @@ function renderLyrics(lyrics) {
 
     updateFocusClasses(0);
     updateTicker();
+    if (window.Games) Games.onLyrics();
 }
 
 function startSyncLoop() {
@@ -1427,6 +1485,8 @@ function updateLyricsProgress(progressMs, durationMs) {
             arc.style.strokeDashoffset = 427.26 * (1 - Math.min(1, progressMs / durationMs));
         }
     }
+
+    if (window.Games) Games.onTick(progressMs);
 
     if (state.lyrics.length === 0) return;
 
@@ -1461,6 +1521,7 @@ function updateLyricsProgress(progressMs, durationMs) {
         // console.log(`Lyric changed: ${state.currentLyricIndex} -> ${newIndex} at ${Math.round(progressMs)}ms`);
         state.currentLyricIndex = newIndex;
         updateActiveLyric(newIndex);
+        if (window.Games) Games.onLine(newIndex);
     }
 }
 
@@ -1759,7 +1820,7 @@ function updateAmbient() {
     elements.ambientNext.textContent = next && next.text ? next.text : '';
 
     if (state.currentTrack) {
-        elements.ambientTrack.textContent = `${state.currentTrack.name} — ${state.currentTrack.artist}`;
+        elements.ambientTrack.textContent = trackLabel();
         if (state.currentTrack.album_art && elements.ambientArt.src !== state.currentTrack.album_art) {
             elements.ambientArt.src = state.currentTrack.album_art;
         }
@@ -1788,7 +1849,7 @@ function updateFocusClasses(activeIndex) {
 // ============================================================================
 function updateTicker() {
     if (state.currentTrack) {
-        elements.tickerTrack.textContent = `${state.currentTrack.name} — ${state.currentTrack.artist}`;
+        elements.tickerTrack.textContent = trackLabel();
         if (state.currentTrack.album_art && elements.tickerArt.src !== state.currentTrack.album_art) {
             elements.tickerArt.src = state.currentTrack.album_art;
         }

@@ -27,6 +27,13 @@ if (!app.isPackaged) {
     try { require('dotenv').config(); } catch (e) { /* optional */ }
 }
 
+// Isolated data folder (settings, tokens, stats, single-instance lock) so a
+// dev copy can run next to the installed app without touching its data
+if (process.env.CADENCE_USER_DATA) {
+    app.setPath('userData', process.env.CADENCE_USER_DATA);
+    app.setPath('sessionData', process.env.CADENCE_USER_DATA);
+}
+
 // ============================================================================
 // SINGLE INSTANCE + cadence:// PROTOCOL
 // ============================================================================
@@ -202,6 +209,10 @@ function createClients() {
         onStatus: (status) => {
             if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('listen-along-status', status);
             updateTrayMenu();
+        },
+        // Karaoke & games traffic goes straight to the renderer, which owns the rules
+        onGame: (msg) => {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('listen-along-game', msg);
         }
     });
 }
@@ -386,6 +397,36 @@ function setWindowBounds(bounds) {
     mainWindow.setBounds(bounds);
     if (!wasResizable) mainWindow.setResizable(false);
 }
+
+// Karaoke / duet fill the screen the same way ambient mode does; the two
+// never overlap (ambient waits while this is on)
+let fullscreenActive = false;
+let fullscreenSavedBounds = null;
+
+function setOverlayFullscreen(on) {
+    if (!mainWindow || mainWindow.isDestroyed()) return false;
+    on = Boolean(on);
+    if (on && !fullscreenActive) {
+        fullscreenActive = true;
+        if (ambientActive) {
+            // Already expanded for ambient mode: take over its saved bounds
+            fullscreenSavedBounds = ambientSavedBounds;
+            ambientActive = false;
+            ambientSavedBounds = null;
+            mainWindow.webContents.send('ambient-mode', false);
+        } else {
+            fullscreenSavedBounds = mainWindow.getBounds();
+            setWindowBounds(screen.getDisplayMatching(mainWindow.getBounds()).bounds);
+        }
+    } else if (!on && fullscreenActive) {
+        fullscreenActive = false;
+        if (fullscreenSavedBounds) setWindowBounds(fullscreenSavedBounds);
+        fullscreenSavedBounds = null;
+    }
+    return fullscreenActive;
+}
+
+ipcMain.handle('overlay-fullscreen', (event, on) => setOverlayFullscreen(on));
 
 function createWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
@@ -574,7 +615,7 @@ function applyWindowScale(factor) {
     const fit = Math.min((area.width - 16) / WINDOW_WIDTH, (area.height - 16) / WINDOW_HEIGHT);
     windowScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, fit, f));
 
-    if (mainWindow && !mainWindow.isDestroyed() && !ambientActive) {
+    if (mainWindow && !mainWindow.isDestroyed() && !ambientActive && !fullscreenActive) {
         const [x, y] = mainWindow.getPosition();
         const width = Math.round(WINDOW_WIDTH * windowScale);
         const height = Math.round(WINDOW_HEIGHT * windowScale);
@@ -620,7 +661,7 @@ ipcMain.handle('get-current-track', async () => {
 
 // Audio analysis (Spotify retired this for most apps; degrades to null)
 ipcMain.handle('get-audio-analysis', async (event, trackId) => {
-    if (!trackId || !spotify.isConnected()) return null;
+    if (!trackId || !credentialsConfigured() || !spotify.isConnected()) return null;
     return spotify.getAudioAnalysis(trackId);
 });
 
@@ -669,6 +710,15 @@ ipcMain.handle('listen-along-request', async (event, { link, current } = {}) => 
 
 // Host: play / queue / dismiss a request
 ipcMain.handle('listen-along-request-action', (event, reqId, action) => listenAlong.requestAction(String(reqId || ''), String(action || '')));
+
+// Host: hand the session to a listener (and stay on as one)
+ipcMain.handle('listen-along-handoff', (event, toId) => listenAlong.handoff(String(toId || '')));
+
+// Karaoke & games: renderer-defined messages to everyone in the session
+ipcMain.handle('listen-along-game', (event, payload) => {
+    if (!payload || typeof payload !== 'object') return { success: false, error: 'Bad payload' };
+    return listenAlong.sendGame(payload);
+});
 ipcMain.handle('copy-text', (event, text) => {
     clipboard.writeText(String(text || ''));
     return true;
@@ -963,7 +1013,7 @@ app.whenReady().then(() => {
         const idle = powerMonitor.getSystemIdleTime();
         const playingRecently = Date.now() - lastPlayingAt < 10000;
 
-        if (!ambientActive && idle >= 60 && playingRecently) {
+        if (!ambientActive && !fullscreenActive && idle >= 60 && playingRecently) {
             ambientActive = true;
             ambientSavedBounds = mainWindow.getBounds();
             setWindowBounds(screen.getPrimaryDisplay().bounds);
@@ -996,11 +1046,12 @@ app.on('before-quit', (event) => {
     saveDailyStats();
     if (spotify) spotify.shutdown();
     if (localPlayer) localPlayer.shutdown();
-    // Tell listeners we're leaving before the process dies (best effort, 1s cap)
+    // Tell listeners we're leaving — or hand the session to one of them —
+    // before the process dies (best effort, 2.5s cap)
     if (listenAlong && !shuttingDown && (listenAlong.isHost() || listenAlong.isGuest())) {
         event.preventDefault();
         shuttingDown = true;
-        Promise.race([listenAlong.shutdown(), new Promise(r => setTimeout(r, 1000))])
+        Promise.race([listenAlong.shutdown(), new Promise(r => setTimeout(r, 2500))])
             .finally(() => app.quit());
     }
 });

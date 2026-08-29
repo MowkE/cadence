@@ -2489,7 +2489,6 @@ body.auto-hidden:not(.peek) {
    LISTEN ALONG: NAMES, SONG REQUESTS, TEXT FIELDS
    ============================================================================ */
 #la-name,
-#share-url,
 .field-input {
     width: 100%;
     box-sizing: border-box;
@@ -2504,17 +2503,12 @@ body.auto-hidden:not(.peek) {
 }
 
 #la-name:focus,
-#share-url:focus,
 .field-input:focus {
     border-color: rgba(var(--dominant-color-rgb), 0.7);
 }
 
 #la-name {
     margin-bottom: 8px;
-}
-
-#share-url {
-    margin-bottom: 4px;
 }
 
 .field-row {

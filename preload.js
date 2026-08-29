@@ -48,8 +48,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setClickThroughLock: (on) => ipcRenderer.invoke('set-click-through-lock', on),
     setDisplayName: (name) => ipcRenderer.invoke('set-display-name', name),
     setHotkeys: (keys) => ipcRenderer.invoke('set-hotkeys', keys),
-    setShare: (config) => ipcRenderer.invoke('set-share', config),
-    shareTest: () => ipcRenderer.invoke('share-test'),
     onPlayerInfo: (callback) => {
         ipcRenderer.on('player-info', (event, info) => callback(info));
     },

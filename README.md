@@ -58,7 +58,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 - **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
 - **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
-- **Shortcuts, auto-hide, and sharing** — global hotkeys to show/hide the overlay, fade-out after N minutes of silence, and a webhook that posts each new song to Discord or Slack
+- **Shortcuts and auto-hide** — global hotkeys to show/hide the overlay, and fade-out after N minutes of silence
 - **Three lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
@@ -112,7 +112,6 @@ How it works: your overlay publishes tiny "state" messages (track, position, pla
 - **Shortcuts** (global, configurable in settings): **Ctrl/⌘ + Shift + H** shows or hides the overlay, **Ctrl/⌘ + Shift + L** opens settings from anywhere
 - **Resize** with the Size slider in settings, or drag the **⤡ grip** at the overlay's bottom-right corner
 - **Auto-hide when paused**: pick 1 / 5 / 15 minutes and the overlay fades out after that long without music, fading back in when something plays; hover it to peek
-- **Share now playing**: paste a Discord or Slack incoming-webhook URL in settings and each new song is posted to that channel (with art and a Spotify link) a few seconds after it starts, so skipping around doesn't spam. Any other `https://` URL receives plain JSON instead
 - The window is click-through everywhere except its controls. If something underneath still isn't getting your clicks, turn on **Click-through lock** (settings, or the tray menu): the overlay then never takes the mouse unless a panel is open
 - On Windows the overlay re-asserts itself above borderless/windowed-fullscreen apps (games, video). Exclusive-fullscreen games can't be overlaid by any window — switch the game to borderless
 - Hover the album art for playback controls; with Progress arc enabled, drag the ring around the art to scrub through the song

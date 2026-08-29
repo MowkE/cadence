@@ -49,7 +49,6 @@ const state = {
     playerInfo: null,
     playerSource: 'auto',         // 'auto' | 'local' | 'api'
     clickThroughLock: false,
-    shareEnabled: false,          // webhook posting, lives in the main process
 
     // Auto-hide when paused
     autoHideMin: 0,               // 0 = off
@@ -521,20 +520,6 @@ function setupEventListeners() {
     document.getElementById('hotkey-toggle').addEventListener('change', saveHotkeys);
     document.getElementById('hotkey-settings').addEventListener('change', saveHotkeys);
 
-    // Share now playing (webhook)
-    const shareUrl = document.getElementById('share-url');
-    const shareStatus = document.getElementById('share-status');
-    shareUrl.addEventListener('change', () => {
-        window.electronAPI.setShare({ url: shareUrl.value, enabled: state.shareEnabled }).then(applyPlayerInfo);
-    });
-    document.getElementById('share-test-btn').addEventListener('click', async () => {
-        // Commit the URL first in case it hasn't blurred yet
-        await window.electronAPI.setShare({ url: shareUrl.value, enabled: state.shareEnabled });
-        shareStatus.textContent = 'Sending…';
-        const r = await window.electronAPI.shareTest();
-        shareStatus.textContent = r && r.success ? 'Posted ✓' : 'Failed: ' + ((r && r.error) || 'unknown error');
-    });
-
     // Emitter is the hologram's power button
     document.getElementById('holo-puck').addEventListener('click', () => {
         state.holoCollapsed = !state.holoCollapsed;
@@ -856,11 +841,6 @@ function setPrefToggle(pref, on) {
         return;
     }
 
-    if (pref === 'shareEnabled') {
-        window.electronAPI.setShare({ url: document.getElementById('share-url').value, enabled: on }).then(applyPlayerInfo);
-        return;
-    }
-
     if (pref === 'adaptiveTheme') {
         elements.body.classList.toggle('adaptive-theme', on);
     } else if (pref === 'translationOn') {
@@ -1095,14 +1075,6 @@ function applyPlayerInfo(info) {
             : 'e.g. CommandOrControl+Shift+H — leave blank to disable';
         hkStatus.classList.toggle('la-warn', hkErrors.length > 0);
     }
-
-    // Share now playing
-    state.shareEnabled = Boolean(info.share && info.share.enabled);
-    const shareUrl = document.getElementById('share-url');
-    if (shareUrl && document.activeElement !== shareUrl) shareUrl.value = (info.share && info.share.url) || '';
-    const shareStatus = document.getElementById('share-status');
-    if (shareStatus && info.share && info.share.lastError) shareStatus.textContent = 'Last post failed: ' + info.share.lastError;
-    syncToggleInputs();
 
     // Setup card copy: optional on Mac/Windows, the only way in elsewhere
     document.getElementById('setup-note-local').classList.toggle('hidden', !info.localAvailable);

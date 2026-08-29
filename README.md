@@ -65,7 +65,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
 - **Hologram projector** mode — a lens at the bottom of the screen projects the overlay; click it to power the hologram down/up
 - **Playback controls** on hover, plus **ring scrubbing**: drag the progress arc around the album art to seek
-- **Layouts**: full, focus (3-line), and mini ticker bar
+- **Layouts**: full, focus (3-line), mini ticker bar, and **Notch** — just the current line, pinned to the top-centre of the screen under the camera notch, nothing else
 - **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, daily listening recap, ambient screensaver mode when idle
 - **Mac and Windows**, one codebase, no Python or extra installs
 

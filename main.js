@@ -428,6 +428,57 @@ function setOverlayFullscreen(on) {
 
 ipcMain.handle('overlay-fullscreen', (event, on) => setOverlayFullscreen(on));
 
+// Notch bar: a slim strip pinned to the top-centre of the screen — around
+// the camera notch on MacBooks — Dynamic Island style. Fixed size (the Size
+// dial doesn't apply); grows downward while a panel is open so settings fit.
+const NOTCH_WIDTH = 600;
+const NOTCH_LYRIC_ROW = 46;
+const NOTCH_PANEL_HEIGHT = 620;
+let notchActive = false;
+let notchSavedBounds = null;
+
+function notchTopBar(display) {
+    if (process.platform !== 'darwin') return 30;
+    // The work area starts below the menu bar; notch Macs have a taller one
+    return Math.max(24, display.workArea.y - display.bounds.y);
+}
+
+function setNotchLayout(on) {
+    if (!mainWindow || mainWindow.isDestroyed()) return { active: notchActive };
+    on = Boolean(on);
+    const display = screen.getDisplayMatching(mainWindow.getBounds());
+    const topBar = notchTopBar(display);
+    const hasNotch = process.platform === 'darwin' && topBar >= 32;
+    let spacer = topBar;
+    if (on) {
+        if (!notchActive) {
+            notchActive = true;
+            notchSavedBounds = mainWindow.getBounds();
+        }
+        if (!fullscreenActive) {
+            const x = Math.round(display.bounds.x + (display.bounds.width - NOTCH_WIDTH) / 2);
+            setWindowBounds({ x, y: display.bounds.y, width: NOTCH_WIDTH, height: panelOpen ? NOTCH_PANEL_HEIGHT : topBar + NOTCH_LYRIC_ROW });
+            // macOS keeps windows below the menu bar. If we were pushed down,
+            // the strip already starts under the notch — drop the spacer.
+            if (mainWindow.getBounds().y > display.bounds.y) {
+                spacer = 0;
+                setWindowBounds({ x, y: mainWindow.getBounds().y, width: NOTCH_WIDTH, height: panelOpen ? NOTCH_PANEL_HEIGHT : NOTCH_LYRIC_ROW });
+            }
+        }
+    } else if (notchActive) {
+        notchActive = false;
+        if (notchSavedBounds && !fullscreenActive) {
+            // Back where it was, sized by the current Size setting
+            setWindowBounds(notchSavedBounds);
+            applyWindowScale(windowScale);
+        }
+        notchSavedBounds = null;
+    }
+    return { active: notchActive, topBar: spacer, hasNotch, width: NOTCH_WIDTH, lyricRow: NOTCH_LYRIC_ROW };
+}
+
+ipcMain.handle('notch-layout', (event, on) => setNotchLayout(on));
+
 function createWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -584,6 +635,8 @@ ipcMain.on('set-ignore-mouse', (event, ignore) => {
 ipcMain.on('panel-open', (event, open) => {
     panelOpen = Boolean(open);
     applyMouseIgnore();
+    // The notch strip is too short for a panel: grow while one is open
+    if (notchActive) setNotchLayout(true);
 });
 
 // Move window by delta (for drag-to-move feature)
@@ -615,7 +668,7 @@ function applyWindowScale(factor) {
     const fit = Math.min((area.width - 16) / WINDOW_WIDTH, (area.height - 16) / WINDOW_HEIGHT);
     windowScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, fit, f));
 
-    if (mainWindow && !mainWindow.isDestroyed() && !ambientActive && !fullscreenActive) {
+    if (mainWindow && !mainWindow.isDestroyed() && !ambientActive && !fullscreenActive && !notchActive) {
         const [x, y] = mainWindow.getPosition();
         const width = Math.round(WINDOW_WIDTH * windowScale);
         const height = Math.round(WINDOW_HEIGHT * windowScale);
@@ -1013,7 +1066,7 @@ app.whenReady().then(() => {
         const idle = powerMonitor.getSystemIdleTime();
         const playingRecently = Date.now() - lastPlayingAt < 10000;
 
-        if (!ambientActive && !fullscreenActive && idle >= 60 && playingRecently) {
+        if (!ambientActive && !fullscreenActive && !notchActive && idle >= 60 && playingRecently) {
             ambientActive = true;
             ambientSavedBounds = mainWindow.getBounds();
             setWindowBounds(screen.getPrimaryDisplay().bounds);

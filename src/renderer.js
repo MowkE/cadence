@@ -746,9 +746,10 @@ function setVisualizerStyle(style) {
 }
 
 function setLayoutMode(mode) {
-    elements.body.classList.remove('layout-full', 'layout-focus', 'layout-ticker');
+    elements.body.classList.remove('layout-full', 'layout-focus', 'layout-ticker', 'layout-notch');
     elements.body.classList.add(`layout-${mode}`);
     state.layoutMode = mode;
+    applyNotchLayout(mode === 'notch');
 
     // Re-apply focus classes and recenter for the new layout
     updateFocusClasses(state.currentLyricIndex);
@@ -758,6 +759,18 @@ function setLayoutMode(mode) {
     updateTicker();
 
     savePreferences();
+}
+
+// Notch bar: the main process pins a fixed-size strip to the top-centre of
+// the screen. Page zoom parks at 1 so the strip is always the same size.
+function applyNotchLayout(on) {
+    if (!window.electronAPI.setNotchLayout) return;
+    document.documentElement.style.zoom = on ? 1 : state.scaleFactor;
+    window.electronAPI.setNotchLayout(on).then(info => {
+        if (!info) return;
+        document.documentElement.style.setProperty('--notch-top', `${Number(info.topBar) || 0}px`);
+        elements.body.classList.toggle('has-notch', Boolean(info.hasNotch));
+    }).catch(() => {});
 }
 
 const SCALE_PRESETS = { small: 0.85, medium: 1, large: 1.2 };
@@ -774,7 +787,8 @@ let scaleRequestPending = null;
 function setScaleFactor(factor, save) {
     const wanted = Math.max(SCALE_MIN, Math.min(SCALE_MAX, Number(factor) || 1));
     state.scaleFactor = wanted;
-    document.documentElement.style.zoom = wanted;
+    const notch = state.layoutMode === 'notch'; // fixed-size strip: remember the size, don't apply it
+    if (!notch) document.documentElement.style.zoom = wanted;
     updateSizeControls();
 
     scaleRequestPending = wanted;
@@ -783,7 +797,7 @@ function setScaleFactor(factor, save) {
         scaleRequestPending = null;
         if (typeof applied === 'number' && Math.abs(applied - wanted) > 0.001) {
             state.scaleFactor = applied;
-            document.documentElement.style.zoom = applied;
+            if (!notch) document.documentElement.style.zoom = applied;
             updateSizeControls();
         }
         if (save) savePreferences();
@@ -1488,6 +1502,18 @@ function updateLyricsProgress(progressMs, durationMs) {
 
     if (window.Games) Games.onTick(progressMs);
 
+    // Notch bar: elapsed time on the right, a hairline of progress underneath
+    if (state.layoutMode === 'notch' && durationMs > 0) {
+        const fill = document.getElementById('notch-progress-fill');
+        if (fill) fill.style.width = `${Math.min(100, progressMs / durationMs * 100).toFixed(2)}%`;
+        const time = document.getElementById('notch-time');
+        if (time) {
+            const s = Math.floor(progressMs / 1000);
+            const label = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+            if (time.textContent !== label) time.textContent = label;
+        }
+    }
+
     if (state.lyrics.length === 0) return;
 
     let newIndex = state.currentLyricIndex;
@@ -1860,6 +1886,21 @@ function updateTicker() {
 
     const current = state.lyrics[state.currentLyricIndex];
     elements.tickerLyric.textContent = current && current.text ? current.text : '♪';
+
+    // The notch bar shows the same thing, one line at a time
+    const notchTitle = document.getElementById('notch-title');
+    if (notchTitle) {
+        const art = document.getElementById('notch-art');
+        notchTitle.textContent = state.currentTrack ? trackLabel() : 'Nothing playing';
+        if (state.currentTrack && state.currentTrack.album_art) {
+            if (art.src !== state.currentTrack.album_art) art.src = state.currentTrack.album_art;
+            art.hidden = false;
+        } else {
+            art.removeAttribute('src');
+            art.hidden = true;
+        }
+        document.getElementById('notch-lyric').textContent = current && current.text ? current.text : '♪';
+    }
 
     positionTickerGear();
 }

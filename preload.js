@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Fill the screen (karaoke / duet); resolves to the new state
     setOverlayFullscreen: (on) => ipcRenderer.invoke('overlay-fullscreen', on),
 
+    // Notch bar layout: pin a slim strip to the top-centre of the screen
+    setNotchLayout: (on) => ipcRenderer.invoke('notch-layout', on),
+
     // Ambient mode notifications from the main process
     onAmbientMode: (callback) => {
         ipcRenderer.on('ambient-mode', (event, on) => callback(on));

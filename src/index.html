@@ -181,6 +181,10 @@
                         <span class="style-preview layout-preview">▬</span>
                         <span>Ticker</span>
                     </button>
+                    <button class="style-btn" data-style="layout" data-value="notch">
+                        <span class="style-preview layout-preview">◡</span>
+                        <span>Notch</span>
+                    </button>
                 </div>
             </div>
 
@@ -427,6 +431,17 @@
         <div id="ambient-lyric">♪</div>
         <div id="ambient-next"></div>
         <div id="ambient-track"></div>
+    </div>
+
+    <!-- Notch bar: a strip around the camera notch at the top of the screen -->
+    <div id="notch-bar">
+        <div class="notch-top">
+            <div class="notch-cell notch-left"><img id="notch-art" src="" alt="" hidden><span id="notch-title"></span></div>
+            <div class="notch-gap"></div>
+            <div class="notch-cell notch-right"><span id="notch-time"></span></div>
+        </div>
+        <div class="notch-lyric" id="notch-lyric">♪</div>
+        <div class="notch-progress"><i id="notch-progress-fill"></i></div>
     </div>
 
     <!-- Mini Ticker Bar (shown in ticker layout) -->

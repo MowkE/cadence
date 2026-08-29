@@ -376,7 +376,7 @@ function setupEventListeners() {
 
     // Tell the main process when a panel is open (the click-through lock only
     // lets the overlay take the mouse while one is)
-    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel'), document.getElementById('vote-card')];
+    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel'), document.getElementById('vote-card'), document.getElementById('ytm-card')];
     const notifyPanelOpen = () => {
         state.panelOpen = panels.some(p => p && !p.classList.contains('hidden'));
         window.electronAPI.setPanelOpen(state.panelOpen);
@@ -471,6 +471,12 @@ function setupEventListeners() {
             state.previousTrackId = null;
             fetchCurrentTrack();
         }
+    });
+
+    // YouTube Music setup card
+    document.getElementById('ytm-dismiss').addEventListener('click', () => {
+        state.setupDismissed = (setupCardShown || '').split(':')[0] || 'ytmusic-js';
+        hideSetupCard();
     });
 
     // Room vote: pick the next song
@@ -629,9 +635,14 @@ function setupMouseTracking() {
         const isOverVote = !voteCard.classList.contains('hidden') &&
             isPointInRect(e.clientX, e.clientY, voteCard.getBoundingClientRect());
 
+        // YouTube Music setup card
+        const ytmCard = document.getElementById('ytm-card');
+        const isOverYtm = !ytmCard.classList.contains('hidden') &&
+            isPointInRect(e.clientX, e.clientY, ytmCard.getBoundingClientRect());
+
         // If over interactive elements, capture mouse events
         if (isOverSettings || isOverMenu || isOverRecap || isOverControls || isOverArc || isOverPuck ||
-            isOverSetup || isOverGrip || isOverGames || isOverVote || state.scrubbing || state.resizing) {
+            isOverSetup || isOverGrip || isOverGames || isOverVote || isOverYtm || state.scrubbing || state.resizing) {
             window.electronAPI.setIgnoreMouse(false);
         } else {
             window.electronAPI.setIgnoreMouse(true);
@@ -1219,6 +1230,7 @@ function applyPlayerInfo(info) {
 
 async function setPlayerSource(source) {
     try {
+        state.setupDismissed = null; // picking a source again re-opens its setup guide if needed
         applyPlayerInfo(await window.electronAPI.setPlayerSource(source));
         // Re-render on the next poll so the display flips to the new source
         state.previousTrackId = null;
@@ -1246,6 +1258,7 @@ async function fetchCurrentTrack() {
         if (result && result.success && result.track) {
             const track = result.track;
             state.emptyPolls = 0;
+            setupCardConnected();
 
             // Check if track changed
             if (track.id !== state.previousTrackId) {
@@ -1324,6 +1337,7 @@ async function fetchCurrentTrack() {
                 elements.artistName.textContent = `Waiting for ${result.listenAlong.waitingFor}…`;
             } else if (result && result.message && result.source === 'local') {
                 elements.artistName.textContent = result.message;
+                if (result.setup) showSetupCard(result.setup);
             } else if (result && result.needs_setup) {
                 elements.artistName.textContent = 'Connect to Spotify (gear → 🔑)';
             } else if (result && result.needs_auth) {
@@ -1392,6 +1406,83 @@ function updateTrackDisplay(track) {
     if (window.Games) Games.applyTitleMask(); // Guess the song hides the title
     updateTicker();
     updateAmbient();
+}
+
+
+// ============================================================================
+// YOUTUBE MUSIC SETUP CARD — walks the user through the one browser switch
+// ============================================================================
+let setupCardShown = null;   // key of what's currently shown, so we don't re-render every poll
+
+function setupCardSteps(setup) {
+    const b = setup.browser || 'your browser';
+    if (setup.kind === 'automation') {
+        return {
+            title: `Let Cadence talk to ${b}`,
+            intro: `macOS asked whether Cadence may control ${b} and the answer was no. It only needs it to see what's playing.`,
+            steps: [
+                'Open <b>System Settings</b> → <b>Privacy &amp; Security</b> → <b>Automation</b>.',
+                `Find <b>Cadence</b> in the list and turn on <b>${escapeHtmlText(b)}</b>.`
+            ],
+            waiting: `Waiting for ${b}…`
+        };
+    }
+    if (setup.browserKind === 'safari') {
+        return {
+            title: 'Let Cadence read YouTube Music',
+            intro: 'Cadence found YouTube Music in Safari. Safari needs one switch turned on so Cadence can see what\'s playing — it takes 20 seconds and you only do it once.',
+            steps: [
+                'In Safari open <b>Settings</b> → <b>Advanced</b> and turn on <b>Show features for web developers</b>.',
+                'Click the Safari window, then in the menu bar at the very top of the screen click <b>Develop</b>.',
+                'Click <b>Allow JavaScript from Apple Events</b> so it shows a checkmark.',
+                'If macOS asks whether Cadence may control Safari, click <b>Allow</b>.'
+            ],
+            waiting: 'Waiting for Safari…'
+        };
+    }
+    return {
+        title: 'Let Cadence read YouTube Music',
+        intro: `Cadence found YouTube Music in ${b}. ${b} needs one switch turned on so Cadence can see what's playing — it takes 20 seconds and you only do it once.`,
+        steps: [
+            `Click the ${escapeHtmlText(b)} window so it's in front.`,
+            'In the menu bar at the <b>very top of the screen</b>, click <b>View</b>.',
+            'Near the bottom of that menu, point at <b>Developer</b> — a small submenu opens.',
+            'Click <b>Allow JavaScript from Apple Events</b> so it shows a checkmark.',
+            `If macOS asks whether Cadence may control ${escapeHtmlText(b)}, click <b>Allow</b>.`
+        ],
+        waiting: `Waiting for ${b}…`
+    };
+}
+
+function showSetupCard(setup) {
+    if (!setup || state.setupDismissed === setup.kind) return;
+    const key = `${setup.kind}:${setup.browser}`;
+    const card = document.getElementById('ytm-card');
+    if (setupCardShown !== key) {
+        const c = setupCardSteps(setup);
+        document.getElementById('ytm-title').textContent = c.title;
+        document.getElementById('ytm-intro').textContent = c.intro;
+        document.getElementById('ytm-steps').innerHTML = c.steps.map(s => `<li>${s}</li>`).join('');
+        document.getElementById('ytm-status').textContent = c.waiting;
+        setupCardShown = key;
+    }
+    card.classList.remove('hidden');
+}
+
+// A track came through: if the card was up, say so and get out of the way
+function setupCardConnected() {
+    const card = document.getElementById('ytm-card');
+    if (card.classList.contains('hidden') || !setupCardShown) return;
+    document.getElementById('ytm-status').textContent = 'Connected — enjoy the lyrics';
+    const shown = setupCardShown;
+    setTimeout(() => {
+        if (setupCardShown === shown) { card.classList.add('hidden'); setupCardShown = null; }
+    }, 2200);
+}
+
+function hideSetupCard() {
+    document.getElementById('ytm-card').classList.add('hidden');
+    setupCardShown = null;
 }
 
 // "Song — Artist", unless a game is hiding it

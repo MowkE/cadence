@@ -82,7 +82,7 @@ Free accounts get everything: lyrics, visuals, and the play/pause/skip/seek cont
 
 Cadence works with YouTube Music too — pick **YouTube Music** under gear → **Music source** (or leave it on **Auto**, which follows whichever of Spotify / YouTube Music is playing).
 
-- **Mac:** Cadence reads the YouTube Music tab in your browser — Chrome, Brave, Edge, Arc, Vivaldi or Safari. The browser has to allow it once: in Chrome-style browsers, **View → Developer → Allow JavaScript from Apple Events**; in Safari, **Develop → Allow JavaScript from Apple Events** (turn on the Develop menu in Settings → Advanced). Cadence tells you which one it needs. You get lyrics, art, exact timing and the play/pause/skip/seek controls.
+- **Mac:** Cadence reads the YouTube Music tab in your browser — Chrome, Brave, Edge, Arc, Vivaldi or Safari. The browser has to allow it once: in Chrome-style browsers, **View → Developer → Allow JavaScript from Apple Events**; in Safari, **Develop → Allow JavaScript from Apple Events** (turn on the Develop menu in Settings → Advanced). The first time Cadence spots a YouTube Music tab it can't read, a card in the overlay walks you through it step by step and closes itself once it connects. You get lyrics, art, exact timing and the play/pause/skip/seek controls.
 - **Windows:** nothing to set up — the browser (or the YouTube Music desktop app) already reports to the system media session Cadence listens to.
 
 Listen-along guests can follow a YouTube Music host's lyrics, but *playing along* and the room vote need a Spotify host, since requests are Spotify links.

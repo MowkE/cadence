@@ -282,6 +282,56 @@
                 </label>
             </div>
 
+            <div class="settings-section" id="autohide-section">
+                <h3>Auto-hide when paused</h3>
+                <div class="style-options">
+                    <button class="style-btn active" data-style="autohide" data-value="0">
+                        <span class="style-preview scale-preview">∞</span>
+                        <span>Off</span>
+                    </button>
+                    <button class="style-btn" data-style="autohide" data-value="1">
+                        <span class="style-preview scale-preview">1</span>
+                        <span>1 min</span>
+                    </button>
+                    <button class="style-btn" data-style="autohide" data-value="5">
+                        <span class="style-preview scale-preview">5</span>
+                        <span>5 min</span>
+                    </button>
+                    <button class="style-btn" data-style="autohide" data-value="15">
+                        <span class="style-preview scale-preview">15</span>
+                        <span>15 min</span>
+                    </button>
+                </div>
+                <div class="la-hint">Fades out after that long without music and fades back when it plays. Hover to peek.</div>
+            </div>
+
+            <div class="settings-section" id="hotkeys-section">
+                <h3>Shortcuts</h3>
+                <label class="field-row">
+                    <span class="toggle-label">Show / hide overlay</span>
+                    <input id="hotkey-toggle" type="text" class="field-input" spellcheck="false" autocomplete="off">
+                </label>
+                <label class="field-row">
+                    <span class="toggle-label">Open settings</span>
+                    <input id="hotkey-settings" type="text" class="field-input" spellcheck="false" autocomplete="off">
+                </label>
+                <div class="la-hint" id="hotkey-status">e.g. CommandOrControl+Shift+H — leave blank to disable</div>
+            </div>
+
+            <div class="settings-section" id="share-section">
+                <h3>Share now playing</h3>
+                <input id="share-url" type="text" placeholder="Discord or Slack webhook URL" spellcheck="false" autocomplete="off">
+                <label class="toggle-row">
+                    <span class="toggle-label">Post each new song</span>
+                    <input type="checkbox" class="pref-toggle" data-pref="shareEnabled">
+                    <span class="toggle-switch"></span>
+                </label>
+                <div class="la-actions">
+                    <button id="share-test-btn" class="action-btn recap-btn">Send current song</button>
+                </div>
+                <div class="la-hint" id="share-status">Posts to the channel the webhook belongs to. Any other https URL receives plain JSON.</div>
+            </div>
+
             <div class="settings-section" id="source-section">
                 <h3>Spotify</h3>
                 <div class="style-options">
@@ -306,6 +356,7 @@
 
                 <!-- Idle: start a session or join one -->
                 <div id="la-idle">
+                    <input id="la-name" type="text" placeholder="Your name (what friends see)" maxlength="40" spellcheck="false" autocomplete="off">
                     <button id="la-host-btn" class="action-btn la-btn">🎧 Start a session</button>
                     <div class="la-join-row">
                         <input id="la-code-input" type="text" placeholder="Paste a code or link" spellcheck="false" autocomplete="off">
@@ -318,6 +369,7 @@
                 <div id="la-hosting" class="hidden">
                     <div class="la-code" id="la-code" title="Click to copy">ABCD-EFGH</div>
                     <div class="la-hint" id="la-listeners">Share the code or link with friends</div>
+                    <div id="la-requests" class="la-requests"></div>
                     <div class="la-actions">
                         <button id="la-copy-btn" class="action-btn la-btn">Copy link</button>
                         <button id="la-end-btn" class="action-btn recap-btn">End</button>
@@ -334,6 +386,12 @@
                         <span class="toggle-switch"></span>
                     </label>
                     <div class="la-hint la-warn" id="la-mirror-note"></div>
+                    <div class="la-join-row la-req-row">
+                        <input id="la-req-input" type="text" placeholder="Paste a Spotify song link to request it" spellcheck="false" autocomplete="off">
+                        <button id="la-req-btn" class="action-btn recap-btn">Request</button>
+                    </div>
+                    <button id="la-req-current-btn" class="action-btn la-btn">🎵 Request what I'm playing</button>
+                    <div class="la-hint" id="la-req-note"></div>
                     <button id="la-leave-btn" class="action-btn recap-btn">Leave session</button>
                 </div>
 

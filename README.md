@@ -57,7 +57,8 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 
 - **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
-- **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync
+- **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
+- **Shortcuts, auto-hide, and sharing** — global hotkeys to show/hide the overlay, fade-out after N minutes of silence, and a webhook that posts each new song to Discord or Slack
 - **Three lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
@@ -99,12 +100,19 @@ Share your music with a friend who also has Cadence:
 
 **Friend:** click the link (it opens Cadence) or paste the code into gear → **Listen along** → **Join**. Their overlay switches to your track and lyrics, in sync with where you are in the song — even if they haven't connected Spotify. With **Play on my Spotify too** on (default), Cadence also starts the same song on their Spotify at the same position, follows your skips, pauses and seeks, and pauses when they leave. That part needs the Spotify app open on their side; on Mac any account works, on Windows it needs Web API keys (see above).
 
+**Names:** the host's panel lists who's listening by name. Cadence uses your Spotify display name (Web API) or your account name on this computer; set anything you like in gear → **Listen along** → *Your name*.
+
+**Song requests:** guests paste a Spotify song link (Spotify → Share → Copy Song Link) or press **Request what I'm playing**. The host sees the request with album art and who asked, and can **▶ play it now**, **＋ queue it** (Web API only), or **✕ pass** — guests get told which happened.
+
 How it works: your overlay publishes tiny "state" messages (track, position, playing) to a private, randomly named topic on [ntfy.sh](https://ntfy.sh) — only when something changes, never your audio or account. Guests subscribe to that topic. Anyone with the code can follow, so share it like a party invite. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
 
 ## Usage
 
-- **Drag the gear** to move the overlay; **click it** for settings. **Ctrl/⌘ + Shift + L** opens settings from anywhere
+- **Drag the gear** to move the overlay; **click it** for settings
+- **Shortcuts** (global, configurable in settings): **Ctrl/⌘ + Shift + H** shows or hides the overlay, **Ctrl/⌘ + Shift + L** opens settings from anywhere
 - **Resize** with the Size slider in settings, or drag the **⤡ grip** at the overlay's bottom-right corner
+- **Auto-hide when paused**: pick 1 / 5 / 15 minutes and the overlay fades out after that long without music, fading back in when something plays; hover it to peek
+- **Share now playing**: paste a Discord or Slack incoming-webhook URL in settings and each new song is posted to that channel (with art and a Spotify link) a few seconds after it starts, so skipping around doesn't spam. Any other `https://` URL receives plain JSON instead
 - The window is click-through everywhere except its controls. If something underneath still isn't getting your clicks, turn on **Click-through lock** (settings, or the tray menu): the overlay then never takes the mouse unless a panel is open
 - On Windows the overlay re-asserts itself above borderless/windowed-fullscreen apps (games, video). Exclusive-fullscreen games can't be overlaid by any window — switch the game to borderless
 - Hover the album art for playback controls; with Progress arc enabled, drag the ring around the art to scrub through the song

@@ -19,6 +19,7 @@ const { createSpotifyClient } = require('./lib/spotify');
 const { getSyncedLyrics } = require('./lib/lyrics');
 const { createListenAlong } = require('./lib/listen-along');
 const { createLocalPlayer } = require('./lib/local-player');
+const { parseSpotifyLink, isShortLink, resolveShortLink, resolveTrackMeta } = require('./lib/spotify-link');
 
 // .env is a development convenience only — user credentials live in a
 // per-user config file (see loadCredentials)
@@ -101,7 +102,18 @@ function legacyTokenCaches() {
 // connected, otherwise the Spotify app on this computer), 'local' or 'api'.
 // clickThroughLock: the overlay never captures the mouse unless a panel is
 // open (Settings then comes from the tray icon or Ctrl/Cmd+Shift+L).
-let settings = { relay: null, source: 'auto', clickThroughLock: false };
+// displayName: what listen-along friends see (blank = Spotify / account name).
+// hotkeyToggle / hotkeySettings: global shortcuts (Electron accelerators).
+// share: post each new song to a Discord / Slack webhook (or any JSON URL).
+let settings = {
+    relay: null,
+    source: 'auto',
+    clickThroughLock: false,
+    displayName: '',
+    hotkeyToggle: 'CommandOrControl+Shift+H',
+    hotkeySettings: 'CommandOrControl+Shift+L',
+    share: { url: '', enabled: false }
+};
 function loadSettings() {
     try {
         settings = { ...settings, ...JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) };
@@ -113,7 +125,8 @@ function loadSettings() {
 function saveSettings() {
     try {
         fs.mkdirSync(userDataPath(), { recursive: true });
-        fs.writeFileSync(settingsPath(), JSON.stringify(settings));
+        // 0600: the webhook URL is a secret
+        fs.writeFileSync(settingsPath(), JSON.stringify(settings), { mode: 0o600 });
     } catch (e) {
         console.error('Could not save settings:', e.message);
     }
@@ -187,6 +200,7 @@ function createClients() {
     listenAlong = createListenAlong({
         getRelayBase: () => settings.relay,
         player,
+        getDisplayName,
         onStatus: (status) => {
             if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('listen-along-status', status);
             updateTrayMenu();
@@ -230,8 +244,26 @@ const player = {
     playTrack: (uri, positionMs) => resolveSource() === 'local'
         ? localPlayer.playTrack(uri, positionMs)
         : spotify.playTrack(uri, positionMs),
-    getProfile: () => resolveSource() === 'local' ? localPlayer.getProfile() : spotify.getProfile()
+    getProfile: () => resolveSource() === 'local' ? localPlayer.getProfile() : spotify.getProfile(),
+    queueTrack: (uri) => resolveSource() === 'local' ? localPlayer.queueTrack(uri) : spotify.queueTrack(uri),
+    // Only the Web API can add to the queue
+    canQueue: () => resolveSource() === 'api' && Boolean(spotify && spotify.isConnected())
 };
+
+// What friends see in listen along: the name from settings, else the Spotify
+// display name (API) or the account name on this computer (local)
+let lastKnownName = null;
+async function getDisplayName() {
+    const custom = String(settings.displayName || '').trim();
+    if (custom) return custom.slice(0, 40);
+    try {
+        const profile = await player.getProfile();
+        lastKnownName = profile && profile.display_name ? profile.display_name : null;
+    } catch (e) {
+        lastKnownName = null;
+    }
+    return lastKnownName;
+}
 
 function playerInfo() {
     return {
@@ -242,10 +274,185 @@ function playerInfo() {
         localAvailable: Boolean(localPlayer && localPlayer.available),
         localDescription: localPlayer ? localPlayer.description : null,
         localCanPlayTrack: Boolean(localPlayer && localPlayer.canPlayTrack),
+        canQueue: player.canQueue(),
         platform: process.platform,
-        clickThroughLock: Boolean(settings.clickThroughLock)
+        clickThroughLock: Boolean(settings.clickThroughLock),
+        displayName: settings.displayName || '',
+        nameHint: lastKnownName,
+        hotkeys: { toggle: settings.hotkeyToggle || '', settings: settings.hotkeySettings || '', errors: hotkeyErrors },
+        share: {
+            url: (settings.share && settings.share.url) || '',
+            enabled: Boolean(settings.share && settings.share.enabled),
+            lastError: shareLastResult && !shareLastResult.success ? shareLastResult.error : null
+        }
     };
 }
+
+ipcMain.handle('set-display-name', (event, name) => {
+    settings.displayName = String(name || '').replace(/[ -]/g, '').trim().slice(0, 40);
+    saveSettings();
+    return playerInfo();
+});
+
+// ============================================================================
+// GLOBAL SHORTCUTS (show/hide overlay, open settings) — user-configurable
+// ============================================================================
+function toggleOverlay() {
+    if (!mainWindow || mainWindow.isDestroyed()) { createWindow(); return; }
+    if (mainWindow.isVisible()) mainWindow.hide();
+    else mainWindow.show();
+}
+
+function openSettingsPanel() {
+    if (!mainWindow || mainWindow.isDestroyed()) createWindow();
+    mainWindow.show();
+    mainWindow.webContents.send('toggle-settings');
+}
+
+let hotkeyErrors = {};
+function registerHotkeys() {
+    globalShortcut.unregisterAll();
+    hotkeyErrors = {};
+    const tryRegister = (key, accelerator, handler) => {
+        const accel = String(accelerator || '').trim();
+        if (!accel) return;
+        try {
+            if (!globalShortcut.register(accel, handler)) hotkeyErrors[key] = 'already taken by another app';
+        } catch (e) {
+            hotkeyErrors[key] = 'not a valid shortcut';
+        }
+    };
+    tryRegister('toggle', settings.hotkeyToggle, toggleOverlay);
+    tryRegister('settings', settings.hotkeySettings, openSettingsPanel);
+    for (const [key, err] of Object.entries(hotkeyErrors)) console.error(`Shortcut "${key}": ${err}`);
+    return hotkeyErrors;
+}
+
+ipcMain.handle('set-hotkeys', (event, { toggle, settings: settingsKey } = {}) => {
+    settings.hotkeyToggle = String(toggle || '').trim().slice(0, 60);
+    settings.hotkeySettings = String(settingsKey || '').trim().slice(0, 60);
+    saveSettings();
+    registerHotkeys();
+    return playerInfo();
+});
+
+// ============================================================================
+// SHARE NOW PLAYING (Discord / Slack incoming webhook, or any JSON endpoint)
+// ============================================================================
+let shareLastId = null;
+let sharePending = null;
+let shareTimer = null;
+let shareLastResult = null;
+
+function shareConfigured() {
+    return Boolean(settings.share && settings.share.enabled && /^https:\/\//i.test(String(settings.share.url || '')));
+}
+
+// Called after every poll of our own playback. Posts once a new track has
+// been playing for a few seconds, so skipping through songs posts only the
+// one you land on.
+function considerShare(result) {
+    if (!shareConfigured()) return;
+    const track = result && result.success && result.track;
+    if (!track || !track.is_playing || track.id === shareLastId) return;
+    if (sharePending && sharePending.id === track.id) return;
+    sharePending = track;
+    if (shareTimer) clearTimeout(shareTimer);
+    shareTimer = setTimeout(() => {
+        shareTimer = null;
+        const t = sharePending;
+        sharePending = null;
+        if (!t || t.id === shareLastId) return;
+        shareLastId = t.id;
+        postNowPlaying(t).then(r => {
+            shareLastResult = r;
+            if (!r.success) console.error('Share failed:', r.error);
+        });
+    }, 4000);
+}
+
+function spotifyLink(track) {
+    const m = /^spotify:(track|episode):([A-Za-z0-9]+)$/.exec(String(track.uri || ''));
+    return m ? `https://open.spotify.com/${m[1]}/${m[2]}` : null;
+}
+
+async function postNowPlaying(track) {
+    const url = String((settings.share && settings.share.url) || '');
+    const link = spotifyLink(track);
+    const art = /^https?:\/\//i.test(String(track.album_art || '')) ? track.album_art : null;
+    let body;
+    if (/discord(app)?\.com\/api\/webhooks\//i.test(url)) {
+        body = {
+            username: 'Cadence',
+            embeds: [{
+                title: track.name,
+                url: link || undefined,
+                description: `${track.artist}${track.album ? `\n${track.album}` : ''}`,
+                color: 0x1DB954,
+                thumbnail: art ? { url: art } : undefined,
+                footer: { text: '🎵 Now playing' }
+            }]
+        };
+    } else if (/hooks\.slack\.com\//i.test(url)) {
+        const title = link ? `<${link}|${track.name}>` : track.name;
+        body = {
+            text: `🎵 Now playing: ${track.name} — ${track.artist}`,
+            blocks: [{
+                type: 'section',
+                text: { type: 'mrkdwn', text: `🎵 *Now playing:* ${title} — ${track.artist}${track.album ? `\n_${track.album}_` : ''}` },
+                ...(art ? { accessory: { type: 'image', image_url: art, alt_text: track.album || track.name } } : {})
+            }]
+        };
+    } else {
+        body = {
+            event: 'now-playing',
+            name: track.name,
+            artist: track.artist,
+            artists: track.artists || [],
+            album: track.album || '',
+            album_art: art,
+            url: link,
+            uri: track.uri || null,
+            duration_ms: track.duration_ms || 0,
+            at: Date.now()
+        };
+    }
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(8000)
+        });
+        if (!res.ok) return { success: false, error: `Webhook returned ${res.status}` };
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: err.name === 'TimeoutError' ? 'Webhook timed out' : err.message };
+    }
+}
+
+ipcMain.handle('set-share', (event, { url, enabled } = {}) => {
+    const wasEnabled = shareConfigured();
+    settings.share = { url: String(url || '').trim().slice(0, 500), enabled: Boolean(enabled) };
+    saveSettings();
+    // Just switched on: post whatever is playing right now
+    if (!wasEnabled && shareConfigured()) shareLastId = null;
+    return playerInfo();
+});
+
+ipcMain.handle('share-test', async () => {
+    if (!/^https:\/\//i.test(String((settings.share && settings.share.url) || ''))) {
+        return { success: false, error: 'Enter an https:// webhook URL first' };
+    }
+    const result = listenAlong.isGuest() ? listenAlong.guestTrackResult() : await player.getCurrentTrack();
+    const track = result && result.success && result.track;
+    if (!track) return { success: false, error: 'Nothing is playing to share' };
+    const r = await postNowPlaying(track);
+    shareLastResult = r;
+    if (r.success) shareLastId = track.id;
+    return r;
+});
 
 ipcMain.handle('get-credentials-status', () => playerInfo());
 
@@ -531,6 +738,7 @@ ipcMain.handle('get-current-track', async () => {
     }
     result.source = source;
     recordPlayback(result);
+    considerShare(result);
     listenAlong.onHostPoll(result);
     return result;
 });
@@ -561,6 +769,31 @@ ipcMain.handle('listen-along-host', () => listenAlong.startHost());
 ipcMain.handle('listen-along-join', (event, code) => listenAlong.join(code));
 ipcMain.handle('listen-along-leave', () => listenAlong.leave().then(() => listenAlong.status()));
 ipcMain.handle('listen-along-mirror', (event, on) => listenAlong.setMirror(on));
+
+// Guest: request a song — a pasted Spotify link, or whatever I'm playing
+ipcMain.handle('listen-along-request', async (event, { link, current } = {}) => {
+    let track;
+    if (current) {
+        const r = await player.getCurrentTrack();
+        if (!r || !r.success || !r.track) return { success: false, error: 'Nothing is playing on your Spotify' };
+        if (!r.track.uri) return { success: false, error: "Your Spotify doesn't expose track links here — paste a Spotify link instead" };
+        track = r.track;
+    } else {
+        let parsed = parseSpotifyLink(link);
+        if (!parsed && isShortLink(link)) parsed = await resolveShortLink(link);
+        if (!parsed) return { success: false, error: 'Paste a Spotify song link (Share → Copy Song Link)' };
+        const meta = await resolveTrackMeta(parsed);
+        track = {
+            uri: parsed.uri,
+            id: parsed.id,
+            ...(meta || { name: parsed.type === 'episode' ? 'Podcast episode' : 'Spotify track', artist: '', album: '', album_art: null, duration_ms: 0 })
+        };
+    }
+    return listenAlong.request(track);
+});
+
+// Host: play / queue / dismiss a request
+ipcMain.handle('listen-along-request-action', (event, reqId, action) => listenAlong.requestAction(String(reqId || ''), String(action || '')));
 ipcMain.handle('copy-text', (event, text) => {
     clipboard.writeText(String(text || ''));
     return true;
@@ -828,17 +1061,9 @@ app.whenReady().then(() => {
         }, 1500);
     }
 
-    // Ctrl/Cmd+Shift+L toggles the settings panel from anywhere — the way in
-    // when the click-through lock makes the gear button unclickable
-    try {
-        globalShortcut.register('CommandOrControl+Shift+L', () => {
-            if (!mainWindow) createWindow();
-            mainWindow.show();
-            mainWindow.webContents.send('toggle-settings');
-        });
-    } catch (e) {
-        console.error('Could not register shortcut:', e.message);
-    }
+    // Global shortcuts: show/hide the overlay, open settings (the way in when
+    // the click-through lock makes the gear button unclickable)
+    registerHotkeys();
 
     // First launch after the upgrade with keys but no tokens: start sign-in
     // (existing users get their tokens imported from the old Python cache)

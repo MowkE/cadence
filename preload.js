@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveCredentials: (clientId, clientSecret) => ipcRenderer.invoke('save-credentials', { clientId, clientSecret }),
     setPlayerSource: (source) => ipcRenderer.invoke('set-player-source', source),
     setClickThroughLock: (on) => ipcRenderer.invoke('set-click-through-lock', on),
+    setDisplayName: (name) => ipcRenderer.invoke('set-display-name', name),
+    setHotkeys: (keys) => ipcRenderer.invoke('set-hotkeys', keys),
+    setShare: (config) => ipcRenderer.invoke('set-share', config),
+    shareTest: () => ipcRenderer.invoke('share-test'),
     onPlayerInfo: (callback) => {
         ipcRenderer.on('player-info', (event, info) => callback(info));
     },
@@ -83,6 +87,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         join: (code) => ipcRenderer.invoke('listen-along-join', code),
         leave: () => ipcRenderer.invoke('listen-along-leave'),
         setMirror: (on) => ipcRenderer.invoke('listen-along-mirror', on),
+        // Guest: { link } or { current: true }. Host: reqId + 'play' | 'queue' | 'dismiss'
+        request: (payload) => ipcRenderer.invoke('listen-along-request', payload),
+        requestAction: (reqId, action) => ipcRenderer.invoke('listen-along-request-action', reqId, action),
         onStatus: (callback) => {
             ipcRenderer.on('listen-along-status', (event, status) => callback(status));
         }

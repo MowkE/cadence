@@ -49,6 +49,13 @@ const state = {
     playerInfo: null,
     playerSource: 'auto',         // 'auto' | 'local' | 'api'
     clickThroughLock: false,
+    shareEnabled: false,          // webhook posting, lives in the main process
+
+    // Auto-hide when paused
+    autoHideMin: 0,               // 0 = off
+    autoHidden: false,
+    cursorInside: false,
+    panelOpen: false,
 
     // Beat estimate from synced lyric timing (ms per beat, null = unknown)
     beatMs: null,
@@ -283,6 +290,8 @@ function setupEventListeners() {
                 setScaleMode(styleValue);
             } else if (styleType === 'source') {
                 setPlayerSource(styleValue);
+            } else if (styleType === 'autohide') {
+                setAutoHide(Number(styleValue));
             }
 
             // Update active state
@@ -369,7 +378,9 @@ function setupEventListeners() {
     // lets the overlay take the mouse while one is)
     const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card')];
     const notifyPanelOpen = () => {
-        window.electronAPI.setPanelOpen(panels.some(p => p && !p.classList.contains('hidden')));
+        state.panelOpen = panels.some(p => p && !p.classList.contains('hidden'));
+        window.electronAPI.setPanelOpen(state.panelOpen);
+        updatePeek();
     };
     const panelObserver = new MutationObserver(notifyPanelOpen);
     panels.forEach(p => p && panelObserver.observe(p, { attributes: true, attributeFilter: ['class'] }));
@@ -460,6 +471,70 @@ function setupEventListeners() {
         }
     });
 
+    // Song requests: guests send them, the host's list acts on them
+    const reqInput = document.getElementById('la-req-input');
+    const reqNote = document.getElementById('la-req-note');
+    const sendRequest = async (payload) => {
+        reqNote.textContent = payload.current ? 'Sending what you\'re playing…' : 'Looking up that song…';
+        try {
+            const r = await window.electronAPI.listenAlong.request(payload);
+            if (r && r.success) {
+                reqInput.value = '';
+                if (r.status) renderListenAlong(r.status);
+            } else {
+                reqNote.textContent = (r && r.error) || 'Could not send the request';
+            }
+        } catch (err) {
+            reqNote.textContent = 'Could not send the request: ' + err.message;
+        }
+    };
+    document.getElementById('la-req-btn').addEventListener('click', () => {
+        const link = reqInput.value.trim();
+        if (link) sendRequest({ link });
+        else reqNote.textContent = 'Paste a Spotify song link first (Share → Copy Song Link)';
+    });
+    reqInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') document.getElementById('la-req-btn').click();
+    });
+    document.getElementById('la-req-current-btn').addEventListener('click', () => sendRequest({ current: true }));
+    document.getElementById('la-requests').addEventListener('click', async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        const item = btn && btn.closest('[data-req]');
+        if (!btn || !item) return;
+        btn.disabled = true;
+        const r = await window.electronAPI.listenAlong.requestAction(item.dataset.req, btn.dataset.action);
+        if (r && r.status) renderListenAlong(r.status);
+        if (r && !r.success && r.error) laMsg.textContent = r.error;
+        btn.disabled = false;
+    });
+
+    // The name friends see in listen along
+    document.getElementById('la-name').addEventListener('change', (e) => {
+        window.electronAPI.setDisplayName(e.target.value).then(applyPlayerInfo);
+    });
+
+    // Global shortcuts
+    const saveHotkeys = () => window.electronAPI.setHotkeys({
+        toggle: document.getElementById('hotkey-toggle').value,
+        settings: document.getElementById('hotkey-settings').value
+    }).then(applyPlayerInfo);
+    document.getElementById('hotkey-toggle').addEventListener('change', saveHotkeys);
+    document.getElementById('hotkey-settings').addEventListener('change', saveHotkeys);
+
+    // Share now playing (webhook)
+    const shareUrl = document.getElementById('share-url');
+    const shareStatus = document.getElementById('share-status');
+    shareUrl.addEventListener('change', () => {
+        window.electronAPI.setShare({ url: shareUrl.value, enabled: state.shareEnabled }).then(applyPlayerInfo);
+    });
+    document.getElementById('share-test-btn').addEventListener('click', async () => {
+        // Commit the URL first in case it hasn't blurred yet
+        await window.electronAPI.setShare({ url: shareUrl.value, enabled: state.shareEnabled });
+        shareStatus.textContent = 'Sending…';
+        const r = await window.electronAPI.shareTest();
+        shareStatus.textContent = r && r.success ? 'Posted ✓' : 'Failed: ' + ((r && r.error) || 'unknown error');
+    });
+
     // Emitter is the hologram's power button
     document.getElementById('holo-puck').addEventListener('click', () => {
         state.holoCollapsed = !state.holoCollapsed;
@@ -534,13 +609,43 @@ function setupMouseTracking() {
         } else {
             window.electronAPI.setIgnoreMouse(true);
         }
+
+        // Hovering an auto-hidden overlay peeks at it
+        if (!state.cursorInside) {
+            state.cursorInside = true;
+            updatePeek();
+        }
     });
 
     // The cursor left the window: never keep it captured (a stuck capture is
     // what makes the overlay block clicks on whatever is underneath)
     document.addEventListener('mouseleave', () => {
         if (!state.scrubbing && !state.resizing) window.electronAPI.setIgnoreMouse(true);
+        state.cursorInside = false;
+        updatePeek();
     });
+}
+
+// ============================================================================
+// AUTO-HIDE WHEN PAUSED
+// ============================================================================
+function setAutoHide(minutes) {
+    state.autoHideMin = Number(minutes) || 0;
+    if (!state.autoHideMin) setAutoHidden(false);
+    updateActiveStyleButtons();
+    savePreferences();
+}
+
+function setAutoHidden(on) {
+    if (state.autoHidden === on) return;
+    state.autoHidden = on;
+    elements.body.classList.toggle('auto-hidden', on);
+}
+
+// While hidden, the overlay shows itself when the cursor is over it or a
+// panel is open (e.g. settings opened from the tray / shortcut)
+function updatePeek() {
+    elements.body.classList.toggle('peek', state.cursorInside || state.panelOpen);
 }
 
 function isPointInRect(x, y, rect) {
@@ -751,6 +856,11 @@ function setPrefToggle(pref, on) {
         return;
     }
 
+    if (pref === 'shareEnabled') {
+        window.electronAPI.setShare({ url: document.getElementById('share-url').value, enabled: on }).then(applyPlayerInfo);
+        return;
+    }
+
     if (pref === 'adaptiveTheme') {
         elements.body.classList.toggle('adaptive-theme', on);
     } else if (pref === 'translationOn') {
@@ -798,7 +908,8 @@ function updateActiveStyleButtons() {
         visualizer: state.visualizerStyle,
         layout: state.layoutMode,
         scale: state.scaleMode,
-        source: state.playerSource
+        source: state.playerSource,
+        autohide: String(state.autoHideMin)
     };
 
     elements.styleBtns.forEach(btn => {
@@ -816,6 +927,7 @@ function loadPreferences() {
             if (prefs.layoutMode) setLayoutMode(prefs.layoutMode);
             if (typeof prefs.scaleFactor === 'number') setScaleFactor(prefs.scaleFactor, false);
             else if (prefs.scaleMode) setScaleMode(prefs.scaleMode);
+            if (typeof prefs.autoHideMin === 'number') state.autoHideMin = prefs.autoHideMin;
             if (prefs.lyricBrightness) {
                 setLyricBrightness(prefs.lyricBrightness, false);
                 document.getElementById('brightness-slider').value = prefs.lyricBrightness;
@@ -844,6 +956,7 @@ function savePreferences() {
         dailyRecap: state.dailyRecap,
         scaleMode: state.scaleMode,
         scaleFactor: state.scaleFactor,
+        autoHideMin: state.autoHideMin,
         lyricBrightness: state.lyricBrightness,
         tiltOn: state.tiltOn,
         vinylOn: state.vinylOn,
@@ -878,10 +991,13 @@ function renderListenAlong(status) {
     if (status.mode === 'host') {
         document.getElementById('la-code').textContent = status.code;
         const n = status.listeners || 0;
+        const names = (status.listenerNames || []).filter(Boolean);
         document.getElementById('la-listeners').textContent = n === 0
             ? 'Share the code or link with friends — they can join from Cadence'
-            : `${n} ${n === 1 ? 'friend is' : 'friends are'} listening with you`;
+            : `Listening with you: ${names.join(', ')}`;
+        renderRequests(status.requests || [], Boolean(status.canQueue));
     } else if (status.mode === 'guest') {
+        document.getElementById('la-req-note').textContent = status.requestNote || '';
         const dot = `<span class="la-dot${status.connected ? '' : ' off'}"></span>`;
         const who = status.hostName ? `Listening with ${status.hostName}` : 'Listening along';
         document.getElementById('la-with').innerHTML = dot + who + (status.connected ? '' : ' (reconnecting…)');
@@ -896,8 +1012,36 @@ function renderListenAlong(status) {
     if (status.message) msg.textContent = status.message;
     else if (status.mode !== 'off') msg.textContent = '';
 
+    if (status.mode !== 'host') renderRequests([], false);
+
     // Playback controls act on *your* Spotify; hide them while following a host
     elements.body.classList.toggle('listen-along-guest', status.mode === 'guest');
+}
+
+function escapeHtmlText(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Host: the list of songs guests asked for
+function renderRequests(requests, canQueue) {
+    const box = document.getElementById('la-requests');
+    if (!requests.length) {
+        box.innerHTML = '';
+        return;
+    }
+    box.innerHTML = '<div class="la-req-title">Requests</div>' + requests.map(r => `
+        <div class="la-req" data-req="${escapeHtmlText(r.reqId)}">
+            ${r.track.album_art
+                ? `<img class="la-req-art" src="${escapeHtmlText(r.track.album_art)}" alt="">`
+                : '<span class="la-req-art"></span>'}
+            <div class="la-req-meta">
+                <div class="la-req-name">${escapeHtmlText(r.track.name)}</div>
+                <div class="la-req-sub">${escapeHtmlText(r.track.artist)} · from ${escapeHtmlText(r.name)}</div>
+            </div>
+            <button class="la-req-btn" data-action="play" title="Play now">▶</button>
+            ${canQueue ? '<button class="la-req-btn" data-action="queue" title="Add to queue">＋</button>' : ''}
+            <button class="la-req-btn" data-action="dismiss" title="Dismiss">✕</button>
+        </div>`).join('');
 }
 
 // ============================================================================
@@ -929,6 +1073,36 @@ function applyPlayerInfo(info) {
     }
     const localBtn = document.querySelector('.style-btn[data-style="source"][data-value="local"]');
     if (localBtn) localBtn.disabled = !info.localAvailable;
+
+    // Listen-along name (blank = the Spotify / account name)
+    const nameInput = document.getElementById('la-name');
+    if (nameInput && document.activeElement !== nameInput) {
+        nameInput.value = info.displayName || '';
+        nameInput.placeholder = info.nameHint ? `Your name (currently "${info.nameHint}")` : 'Your name (what friends see)';
+    }
+
+    // Global shortcuts
+    const hk = info.hotkeys || {};
+    const hkToggle = document.getElementById('hotkey-toggle');
+    const hkSettings = document.getElementById('hotkey-settings');
+    if (hkToggle && document.activeElement !== hkToggle) hkToggle.value = hk.toggle || '';
+    if (hkSettings && document.activeElement !== hkSettings) hkSettings.value = hk.settings || '';
+    const hkErrors = Object.entries(hk.errors || {});
+    const hkStatus = document.getElementById('hotkey-status');
+    if (hkStatus) {
+        hkStatus.textContent = hkErrors.length
+            ? hkErrors.map(([k, e]) => `${k === 'toggle' ? 'Show/hide' : 'Settings'}: ${e}`).join(' · ')
+            : 'e.g. CommandOrControl+Shift+H — leave blank to disable';
+        hkStatus.classList.toggle('la-warn', hkErrors.length > 0);
+    }
+
+    // Share now playing
+    state.shareEnabled = Boolean(info.share && info.share.enabled);
+    const shareUrl = document.getElementById('share-url');
+    if (shareUrl && document.activeElement !== shareUrl) shareUrl.value = (info.share && info.share.url) || '';
+    const shareStatus = document.getElementById('share-status');
+    if (shareStatus && info.share && info.share.lastError) shareStatus.textContent = 'Last post failed: ' + info.share.lastError;
+    syncToggleInputs();
 
     // Setup card copy: optional on Mac/Windows, the only way in elsewhere
     document.getElementById('setup-note-local').classList.toggle('hidden', !info.localAvailable);
@@ -1061,11 +1235,17 @@ function handlePlaying() {
     state.hasPlayedThisSession = true;
     state.pausedSince = null;
     state.pauseHandled = false;
+    setAutoHidden(false);
 }
 
 function handlePaused() {
     if (!state.pausedSince) {
         state.pausedSince = Date.now();
+    }
+
+    // Auto-hide: fade out after N minutes without music
+    if (state.autoHideMin > 0 && Date.now() - state.pausedSince > state.autoHideMin * 60000) {
+        setAutoHidden(true);
     }
 
     // After 8s of silence, maybe show the recap

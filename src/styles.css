@@ -2473,3 +2473,142 @@ body.resizing {
     color: var(--text-primary);
     font-weight: 600;
 }
+
+/* ============================================================================
+   AUTO-HIDE WHEN PAUSED
+   ============================================================================ */
+body {
+    transition: opacity 1.2s ease;
+}
+
+body.auto-hidden:not(.peek) {
+    opacity: 0;
+}
+
+/* ============================================================================
+   LISTEN ALONG: NAMES, SONG REQUESTS, TEXT FIELDS
+   ============================================================================ */
+#la-name,
+#share-url,
+.field-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    outline: none;
+}
+
+#la-name:focus,
+#share-url:focus,
+.field-input:focus {
+    border-color: rgba(var(--dominant-color-rgb), 0.7);
+}
+
+#la-name {
+    margin-bottom: 8px;
+}
+
+#share-url {
+    margin-bottom: 4px;
+}
+
+.field-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 5px 0;
+}
+
+.field-row .field-input {
+    width: 100%;
+    font-family: 'Inter', monospace;
+}
+
+.la-req-row {
+    margin-top: 10px;
+}
+
+#la-req-current-btn {
+    margin-top: 6px;
+}
+
+.la-requests {
+    margin-top: 10px;
+}
+
+.la-req-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.la-req {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.la-req-art {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.la-req-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.la-req-name {
+    font-size: 12px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.la-req-sub {
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.la-req-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--dominant-color-rgb), 0.5);
+    background: rgba(var(--dominant-color-rgb), 0.15);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.la-req-btn:hover {
+    background: rgba(var(--dominant-color-rgb), 0.35);
+}
+
+.la-req-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}

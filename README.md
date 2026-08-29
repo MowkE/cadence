@@ -55,7 +55,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 
 ## Features
 
-- **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed
+- **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed. **YouTube Music** works too, straight from the browser tab
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
 - **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
 - **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, beat tap, type the line; solo or with your session
@@ -77,6 +77,15 @@ Cadence reads what's playing straight from the Spotify desktop app on your compu
 - **Windows:** nothing to approve. Cadence listens to the system media session Spotify already reports to — the same thing the volume flyout shows. Album art comes from a free iTunes/Deezer lookup, so it can occasionally differ from Spotify's.
 
 Free accounts get everything: lyrics, visuals, and the play/pause/skip/seek controls in the overlay.
+
+### YouTube Music
+
+Cadence works with YouTube Music too — pick **YouTube Music** under gear → **Music source** (or leave it on **Auto**, which follows whichever of Spotify / YouTube Music is playing).
+
+- **Mac:** Cadence reads the YouTube Music tab in your browser — Chrome, Brave, Edge, Arc, Vivaldi or Safari. The browser has to allow it once: in Chrome-style browsers, **View → Developer → Allow JavaScript from Apple Events**; in Safari, **Develop → Allow JavaScript from Apple Events** (turn on the Develop menu in Settings → Advanced). Cadence tells you which one it needs. You get lyrics, art, exact timing and the play/pause/skip/seek controls.
+- **Windows:** nothing to set up — the browser (or the YouTube Music desktop app) already reports to the system media session Cadence listens to.
+
+Listen-along guests can follow a YouTube Music host's lyrics, but *playing along* and the room vote need a Spotify host, since requests are Spotify links.
 
 ### Optional: Spotify Web API keys
 

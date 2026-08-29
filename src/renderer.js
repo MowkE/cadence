@@ -1176,13 +1176,13 @@ function applyPlayerInfo(info) {
             text = 'Web API keys saved but not signed in — press 🔄 Spotify.';
         } else {
             text = info.localAvailable
-                ? 'No Web API keys (🔑) — pick Auto or Spotify app instead.'
+                ? 'No Web API keys (🔑) — pick Auto, Spotify app or YouTube Music instead.'
                 : 'Add Spotify API keys (🔑) to get started.';
         }
         status.textContent = text;
     }
-    const localBtn = document.querySelector('.style-btn[data-style="source"][data-value="local"]');
-    if (localBtn) localBtn.disabled = !info.localAvailable;
+    document.querySelectorAll('.style-btn[data-style="source"][data-value="local"], .style-btn[data-style="source"][data-value="ytmusic"]')
+        .forEach(btn => { btn.disabled = !info.localAvailable; });
 
     // Listen-along name (blank = the Spotify / account name)
     const nameInput = document.getElementById('la-name');

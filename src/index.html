@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co https://*.mzstatic.com https://*.dzcdn.net;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co https://*.mzstatic.com https://*.dzcdn.net https://*.googleusercontent.com https://*.ytimg.com;">
     <title>Cadence</title>
 
     <!-- Google Fonts -->
@@ -352,7 +352,7 @@
             </div>
 
             <div class="settings-section" id="source-section">
-                <h3>Spotify</h3>
+                <h3>Music source</h3>
                 <div class="style-options">
                     <button class="style-btn active" data-style="source" data-value="auto">
                         <span class="style-preview scale-preview">A</span>
@@ -361,6 +361,10 @@
                     <button class="style-btn" data-style="source" data-value="local">
                         <span class="style-preview scale-preview">💻</span>
                         <span>Spotify app</span>
+                    </button>
+                    <button class="style-btn" data-style="source" data-value="ytmusic">
+                        <span class="style-preview scale-preview">▶</span>
+                        <span>YouTube Music</span>
                     </button>
                     <button class="style-btn" data-style="source" data-value="api">
                         <span class="style-preview scale-preview">🔑</span>
@@ -470,7 +474,7 @@
          directly), the only way in elsewhere -->
     <div id="setup-card" class="hidden">
         <h2 id="setup-title">🎧 Connect your Spotify</h2>
-        <p class="setup-note hidden" id="setup-note-local">Cadence already reads the Spotify app on this computer — you can close this. API keys are optional: they add following playback on your other devices and, on Windows, playing along in a friend's session. Spotify requires <b>Premium</b> to create an app (since Feb 2026).</p>
+        <p class="setup-note hidden" id="setup-note-local">Cadence already reads the Spotify app on this computer (or YouTube Music in your browser — pick it under Music source) — you can close this. API keys are optional: they add following playback on your other devices and, on Windows, playing along in a friend's session. Spotify requires <b>Premium</b> to create an app (since Feb 2026).</p>
         <p class="setup-note" id="setup-note-api">Cadence reads what you're playing through Spotify's API with your own keys. Spotify requires a <b>Premium</b> account to create an app.</p>
         <ol class="setup-steps">
             <li>Go to <span class="setup-em">developer.spotify.com/dashboard</span> and create an app</li>

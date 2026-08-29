@@ -222,7 +222,7 @@ function createClients() {
 // ============================================================================
 // PLAYER: which source feeds "now playing" and playback control
 // ============================================================================
-const SOURCES = ['auto', 'local', 'api'];
+const SOURCES = ['auto', 'local', 'ytmusic', 'api'];
 
 function sourcePreference() {
     return SOURCES.includes(settings.source) ? settings.source : 'auto';
@@ -237,8 +237,10 @@ function apiReady() {
 function resolveSource() {
     const pref = sourcePreference();
     const localOk = Boolean(localPlayer && localPlayer.available);
+    // Which app the local player reads: Spotify, YouTube Music, or whichever is playing
+    if (localPlayer) localPlayer.setApp(pref === 'ytmusic' ? 'ytmusic' : pref === 'local' ? 'spotify' : 'auto');
     if (pref === 'api') return 'api';
-    if (pref === 'local') return localOk ? 'local' : 'api';
+    if (pref === 'local' || pref === 'ytmusic') return localOk ? 'local' : 'api';
     if (apiReady()) return 'api';
     return localOk ? 'local' : 'api';
 }
@@ -285,6 +287,7 @@ function playerInfo() {
         localAvailable: Boolean(localPlayer && localPlayer.available),
         localDescription: localPlayer ? localPlayer.description : null,
         localCanPlayTrack: Boolean(localPlayer && localPlayer.canPlayTrack),
+        localApp: localPlayer ? localPlayer.app : null,
         canQueue: player.canQueue(),
         platform: process.platform,
         clickThroughLock: Boolean(settings.clickThroughLock),

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="Cadence">
+  <img src="https://raw.githubusercontent.com/MowkE/cadence/main/assets/icon.png" width="128" alt="Cadence">
 </p>
 
 <h1 align="center">Cadence</h1>
@@ -15,22 +15,22 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/cyberpunk.png" alt="Cyberpunk style with neon billboard frame">
+  <img src="https://raw.githubusercontent.com/MowkE/cadence/main/assets/screenshots/cyberpunk.png" alt="Cyberpunk style with neon billboard frame">
   <em align="center">Cyberpunk — neon billboard with thrusters</em>
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/retro.png" alt="Retro terminal style floating over the desktop">
+  <img src="https://raw.githubusercontent.com/MowkE/cadence/main/assets/screenshots/retro.png" alt="Retro terminal style floating over the desktop">
   <em align="center">Retro — CRT terminal with typewriter lyrics</em>
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/ethereal.png" alt="Ethereal style with aurora glass frame">
+  <img src="https://raw.githubusercontent.com/MowkE/cadence/main/assets/screenshots/ethereal.png" alt="Ethereal style with aurora glass frame">
   <em align="center">Ethereal — aurora glass, album-adaptive fonts and colors</em>
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/hologram.png" alt="Hologram projector mode">
+  <img src="https://raw.githubusercontent.com/MowkE/cadence/main/assets/screenshots/hologram.png" alt="Hologram projector mode">
   <em align="center">Hologram projector — the overlay beams out of a lens at the bottom of the screen</em>
 </p>
 

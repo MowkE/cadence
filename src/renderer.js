@@ -176,6 +176,7 @@ async function init() {
     // Account, friends, updates
     setupCloudUI();
     setupGate();
+    setupAutoHide();
 
     // Listen along: reflect any session the main process already has
     // (e.g. we were launched from a cadence:// link)
@@ -302,8 +303,6 @@ function setupEventListeners() {
                 setScaleMode(styleValue);
             } else if (styleType === 'source') {
                 setPlayerSource(styleValue);
-            } else if (styleType === 'autohide') {
-                setAutoHide(Number(styleValue));
             } else if (styleType === 'contrast') {
                 setContrast(styleValue);
             }
@@ -686,11 +685,49 @@ function setupMouseTracking() {
 // ============================================================================
 // AUTO-HIDE WHEN PAUSED
 // ============================================================================
-function setAutoHide(minutes) {
-    state.autoHideMin = Number(minutes) || 0;
-    if (!state.autoHideMin) setAutoHidden(false);
-    updateActiveStyleButtons();
-    savePreferences();
+const AUTOHIDE_MAX = 1440; // minutes (24h)
+
+function autoHideLabel(min) {
+    if (!min) return 'Off — the overlay stays visible.';
+    const unit = min === 1 ? 'minute' : 'minutes';
+    return `Fades out after ${min} ${unit} paused, and back when music plays. Hover to peek.`;
+}
+
+// Reflect state into the slider, number box and hint (without re-saving)
+function syncAutoHideControls() {
+    const slider = document.getElementById('autohide-slider');
+    const input = document.getElementById('autohide-input');
+    const label = document.getElementById('autohide-label');
+    const min = state.autoHideMin;
+    if (slider && document.activeElement !== slider) slider.value = Math.min(min, Number(slider.max) || 60);
+    if (input && document.activeElement !== input) input.value = min;
+    if (label) label.textContent = autoHideLabel(min);
+}
+
+function setAutoHide(minutes, save = true) {
+    const min = Math.max(0, Math.min(AUTOHIDE_MAX, Math.round(Number(minutes) || 0)));
+    state.autoHideMin = min;
+    if (!min) setAutoHidden(false);
+    syncAutoHideControls();
+    if (save) savePreferences();
+}
+
+function setupAutoHide() {
+    const slider = document.getElementById('autohide-slider');
+    const input = document.getElementById('autohide-input');
+    if (!slider || !input) return;
+    // Slider: live label while dragging, save on release
+    slider.addEventListener('input', () => {
+        const label = document.getElementById('autohide-label');
+        input.value = slider.value;
+        if (label) label.textContent = autoHideLabel(Number(slider.value));
+    });
+    slider.addEventListener('change', () => setAutoHide(Number(slider.value), true));
+    // Number box: type any value up to 24h (slider caps its own travel at 60)
+    const commit = () => setAutoHide(Number(input.value), true);
+    input.addEventListener('change', commit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { commit(); input.blur(); } });
+    syncAutoHideControls();
 }
 
 function setAutoHidden(on) {
@@ -1013,7 +1050,6 @@ function updateActiveStyleButtons() {
         layout: state.layoutMode,
         scale: state.scaleMode,
         source: state.playerSource,
-        autohide: String(state.autoHideMin),
         contrast: state.contrast
     };
 
@@ -1034,7 +1070,7 @@ function loadPreferences() {
             if (prefs.layoutMode) setLayoutMode(prefs.layoutMode);
             if (typeof prefs.scaleFactor === 'number') setScaleFactor(prefs.scaleFactor, false);
             else if (prefs.scaleMode) setScaleMode(prefs.scaleMode);
-            if (typeof prefs.autoHideMin === 'number') state.autoHideMin = prefs.autoHideMin;
+            if (typeof prefs.autoHideMin === 'number') { state.autoHideMin = prefs.autoHideMin; syncAutoHideControls(); }
             if (prefs.lyricBrightness) {
                 setLyricBrightness(prefs.lyricBrightness, false);
                 document.getElementById('brightness-slider').value = prefs.lyricBrightness;

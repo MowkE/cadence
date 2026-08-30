@@ -4212,3 +4212,45 @@ body.gated #track-info {
     color: var(--text-secondary);
     padding: 2px 0;
 }
+
+/* Auto-hide: slider you can also type an exact number into */
+.autohide-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.autohide-row .brightness-slider {
+    flex: 1;
+    min-width: 0;
+}
+
+.autohide-num {
+    width: 56px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 13px;
+    text-align: right;
+    -moz-appearance: textfield;
+}
+
+.autohide-num::-webkit-inner-spin-button,
+.autohide-num::-webkit-outer-spin-button {
+    opacity: 1;
+    height: 20px;
+}
+
+.autohide-num:focus {
+    outline: none;
+    border-color: rgba(var(--dominant-color-rgb), 0.7);
+}
+
+.autohide-unit {
+    font-size: 11px;
+    color: var(--text-secondary);
+}

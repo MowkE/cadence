@@ -394,25 +394,12 @@
 
             <div class="settings-section" id="autohide-section">
                 <h3>Auto-hide when paused</h3>
-                <div class="style-options">
-                    <button class="style-btn active" data-style="autohide" data-value="0">
-                        <span class="style-preview scale-preview">∞</span>
-                        <span>Off</span>
-                    </button>
-                    <button class="style-btn" data-style="autohide" data-value="1">
-                        <span class="style-preview scale-preview">1</span>
-                        <span>1 min</span>
-                    </button>
-                    <button class="style-btn" data-style="autohide" data-value="5">
-                        <span class="style-preview scale-preview">5</span>
-                        <span>5 min</span>
-                    </button>
-                    <button class="style-btn" data-style="autohide" data-value="15">
-                        <span class="style-preview scale-preview">15</span>
-                        <span>15 min</span>
-                    </button>
+                <div class="autohide-row">
+                    <input type="range" id="autohide-slider" class="brightness-slider" min="0" max="60" step="1" value="0">
+                    <input type="number" id="autohide-input" class="autohide-num" min="0" max="1440" step="1" value="0">
+                    <span class="autohide-unit">min</span>
                 </div>
-                <div class="la-hint">Fades out after that long without music and fades back when it plays. Hover to peek.</div>
+                <div class="la-hint" id="autohide-label">Off — the overlay stays visible.</div>
             </div>
 
             <div class="settings-section" id="hotkeys-section">

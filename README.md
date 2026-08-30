@@ -128,6 +128,14 @@ Gear → **Account → Continue with Google**. Your Google name and picture come
 
 Accounts run on a Firebase project the app owner sets up once (see [SETUP-CLOUD.md](SETUP-CLOUD.md)); until then the Account section says so and everything else works without one.
 
+## Sign-up
+
+Cadence is free to try; after about 5 minutes of use it asks you to sign in (Google) and keeps asking until you do. Nothing else changes — same lyrics, same features — but your name, picture and friends come with you.
+
+## Stats
+
+Downloads per version, live from GitHub: **[mowke.github.io/cadence/stats.html](https://mowke.github.io/cadence/stats.html)** (also in the menu-bar icon → *Download stats…*). Sign-ups: Firebase console → Authentication → Users.
+
 ## Updates
 
 Cadence checks GitHub for a new version 15 seconds after launch and every 6 hours. On **Windows** it downloads quietly and installs the next time you open Cadence (or press *Restart to update*). On **Mac** it tells you in settings and the menu-bar icon and gives you a one-click download of the right DMG.

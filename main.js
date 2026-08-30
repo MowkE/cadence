@@ -128,7 +128,8 @@ let settings = {
     roomVote: false,
     displayName: '',
     hotkeyToggle: 'CommandOrControl+Shift+H',
-    hotkeySettings: 'CommandOrControl+Shift+L'
+    hotkeySettings: 'CommandOrControl+Shift+L',
+    usageMs: 0                     // time spent in Cadence without an account (for the sign-up gate)
 };
 function loadSettings() {
     try {
@@ -247,6 +248,7 @@ function createClients() {
     });
     cloud.onChange((status) => {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('cloud-status', status);
+        pushGate(true);
     });
 
     updater = createUpdater({
@@ -305,6 +307,16 @@ const player = {
     playTrack: (uri, positionMs) => effectiveSource() === 'local'
         ? localPlayer.playTrack(uri, positionMs)
         : spotify.playTrack(uri, positionMs),
+    // Cross-service listen-along: play the host's song on whatever service is
+    // active here. The Web API and the local Spotify app can play a shared
+    // Spotify uri directly; a YouTube Music guest (or a Spotify-Web-API guest
+    // following a YTM host) resolves it by title + artist instead.
+    playBySearch: (opts) => effectiveSource() === 'local'
+        ? localPlayer.playBySearch(opts)
+        : spotify.playBySearch(opts),
+    // Can this source play a Spotify uri as-is? The Web API always can; a local
+    // source can only when it's the Spotify app (YouTube Music / SMTC can't).
+    canPlayUri: () => effectiveSource() === 'api' ? true : Boolean(localPlayer && localPlayer.canPlayTrack),
     getProfile: () => effectiveSource() === 'local' ? localPlayer.getProfile() : spotify.getProfile(),
     queueTrack: (uri) => effectiveSource() === 'local' ? localPlayer.queueTrack(uri) : spotify.queueTrack(uri),
     // Only the Web API can add to the queue
@@ -315,9 +327,9 @@ const player = {
 // display name (API) or the account name on this computer (local)
 let lastKnownName = null;
 async function getDisplayName() {
-    const custom = String(settings.displayName || '').trim();
-    if (custom) return custom.slice(0, 40);
+    // Listen-along and games identify you by your account handle
     const account = cloud && cloud.status().user;
+    if (account && account.handle) { lastKnownName = '@' + account.handle; return '@' + account.handle; }
     if (account && account.displayName) { lastKnownName = account.displayName; return account.displayName; }
     try {
         const profile = await player.getProfile();
@@ -985,6 +997,36 @@ ipcMain.handle('listen-along-handoff', (event, toId) => listenAlong.handoff(Stri
 // ============================================================================
 // ACCOUNTS + FRIENDS (lib/cloud.js) and UPDATES (lib/updater.js)
 // ============================================================================
+// ---- Sign-up gate: after GATE_AFTER_MS of use without an account, the overlay
+// asks for one and stays asked. Only arms once the project's Google sign-in
+// is really enabled, so a half-configured backend can't lock anyone out.
+const GATE_AFTER_MS = Number(process.env.CADENCE_GATE_MS) || 5 * 60 * 1000;
+const GATE_TICK_MS = 15000;
+let gateShown = null;
+
+function gateStatus() {
+    const s = cloud ? cloud.status() : { configured: false };
+    const required = Boolean(s.configured && s.providerReady && !s.signedIn && settings.usageMs >= GATE_AFTER_MS);
+    return { required, usageMs: settings.usageMs, after: GATE_AFTER_MS, signedIn: Boolean(s.signedIn) };
+}
+
+function pushGate(force) {
+    const g = gateStatus();
+    if (!force && g.required === gateShown) return;
+    gateShown = g.required;
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('gate-status', g);
+}
+
+setInterval(() => {
+    if (!cloud) return;
+    if (!cloud.status().signedIn && mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+        settings.usageMs = (Number(settings.usageMs) || 0) + GATE_TICK_MS;
+        saveSettings();
+    }
+    pushGate(false);
+}, GATE_TICK_MS);
+
+ipcMain.handle('gate-status', () => gateStatus());
 ipcMain.handle('cloud-status', () => cloud.status());
 ipcMain.handle('cloud-sign-in', () => cloud.startSignIn());
 ipcMain.handle('cloud-sign-out', () => cloud.signOut());
@@ -1029,6 +1071,29 @@ ipcMain.handle('cloud-join-friend', async (event, code) => {
 if (process.env.CADENCE_CLOUD_EMULATOR) {
     ipcMain.handle('cloud-test-sign-in', (event, token) => cloud.signInWithGoogleIdToken(String(token || '')));
 }
+
+// Owner-only: download counts straight from the GitHub releases API
+ipcMain.handle('download-stats', async () => {
+    if (!cloud || !cloud.status().isOwner) return { success: false, error: 'Owner only' };
+    try {
+        const res = await fetch('https://api.github.com/repos/MowkE/cadence/releases?per_page=100', {
+            headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': `Cadence/${app.getVersion()}` },
+            signal: AbortSignal.timeout(10000)
+        });
+        if (!res.ok) return { success: false, error: `GitHub returned ${res.status}` };
+        const releases = await res.json();
+        let total = 0, mac = 0, win = 0;
+        const versions = releases.map(r => {
+            const count = re => (r.assets || []).filter(a => re.test(a.name)).reduce((s, a) => s + (a.download_count || 0), 0);
+            const m = count(/^Cadence-mac-.*\.dmg$/), w = count(/^Cadence-win-.*\.exe$/);
+            total += m + w; mac += m; win += w;
+            return { tag: r.tag_name, date: r.published_at, mac: m, win: w, total: m + w };
+        });
+        return { success: true, total, mac, win, latest: releases[0] ? releases[0].tag_name : null, versions };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+});
 
 ipcMain.handle('updater-status', () => updater.status());
 ipcMain.handle('updater-check', () => updater.check());
@@ -1317,7 +1382,7 @@ app.whenReady().then(() => {
     // Global shortcuts: show/hide the overlay, open settings (the way in when
     // the click-through lock makes the gear button unclickable)
     registerHotkeys();
-    cloud.restore();
+    cloud.restore().then(() => cloud.checkProviders());
     updater.start();
 
     // First launch after the upgrade with keys but no tokens: start sign-in

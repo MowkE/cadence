@@ -128,6 +128,16 @@
         <div id="kk-meta" class="kk-meta"></div>
     </div>
 
+    <!-- Sign-up gate: after a few minutes, Cadence asks for an account -->
+    <div id="gate-card" class="hidden">
+        <div class="gate-inner">
+            <h2>Make Cadence yours</h2>
+            <p class="setup-note">You've had a few minutes with it. Sign in to keep going — don't worry it's free lol 😭✌️</p>
+            <button id="gate-signin" class="action-btn la-btn">Continue with Google</button>
+            <div class="la-hint" id="gate-note"></div>
+        </div>
+    </div>
+
     <!-- YouTube Music setup: the browser has to let Cadence read the tab -->
     <div id="ytm-card" class="hidden">
         <h2 id="ytm-title">Let Cadence read YouTube Music</h2>
@@ -158,7 +168,6 @@
             <div class="settings-section" id="account-section">
                 <h3>Account</h3>
                 <div id="acct-out">
-                    <p class="la-hint acct-blurb">Keep your name and picture everywhere, add friends, see what they're listening to, and join them in one tap.</p>
                     <button id="acct-signin" class="action-btn la-btn">Continue with Google</button>
                     <div class="la-hint" id="acct-note"></div>
                 </div>
@@ -171,7 +180,7 @@
                         </button>
                         <div class="acct-meta">
                             <input id="acct-name" class="field-input" maxlength="40" placeholder="Your name" spellcheck="false" autocomplete="off">
-                            <div class="acct-handle-row"><span class="acct-at">@</span><input id="acct-handle" class="field-input" maxlength="20" placeholder="handle" spellcheck="false" autocomplete="off"></div>
+                            <div class="acct-handle-static" id="acct-handle-static">@handle</div>
                         </div>
                     </div>
                     <div class="la-actions">
@@ -179,6 +188,10 @@
                         <button id="acct-signout" class="action-btn recap-btn">Sign out</button>
                     </div>
                     <div class="la-hint" id="acct-status"></div>
+                    <div id="acct-downloads" class="hidden">
+                        <div class="dl-row"><span>Downloads</span><b id="dl-total">–</b></div>
+                        <div class="la-hint" id="dl-detail"></div>
+                    </div>
                 </div>
             </div>
 
@@ -443,7 +456,6 @@
 
                 <!-- Idle: start a session or join one -->
                 <div id="la-idle">
-                    <input id="la-name" type="text" placeholder="Your name (what friends see)" maxlength="40" spellcheck="false" autocomplete="off">
                     <button id="la-host-btn" class="action-btn la-btn">🎧 Start a session</button>
                     <div class="la-join-row">
                         <input id="la-code-input" type="text" placeholder="Paste a code or link" spellcheck="false" autocomplete="off">

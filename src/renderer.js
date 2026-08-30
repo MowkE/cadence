@@ -51,6 +51,7 @@ const state = {
     clickThroughLock: false,
     roomVote: false,
     cloud: null,                  // account status from the main process
+    gate: null,
     friendsData: null,
     updater: null,              // host: the room picks the next song (lives in the session)
 
@@ -174,6 +175,7 @@ async function init() {
 
     // Account, friends, updates
     setupCloudUI();
+    setupGate();
 
     // Listen along: reflect any session the main process already has
     // (e.g. we were launched from a cadence:// link)
@@ -388,7 +390,7 @@ function setupEventListeners() {
 
     // Tell the main process when a panel is open (the click-through lock only
     // lets the overlay take the mouse while one is)
-    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel'), document.getElementById('vote-card'), document.getElementById('ytm-card')];
+    const panels = [elements.settingsMenu, elements.recapCard, document.getElementById('setup-card'), document.getElementById('games-panel'), document.getElementById('vote-card'), document.getElementById('ytm-card'), document.getElementById('gate-card')];
     const notifyPanelOpen = () => {
         state.panelOpen = panels.some(p => p && !p.classList.contains('hidden'));
         window.electronAPI.setPanelOpen(state.panelOpen);
@@ -557,11 +559,6 @@ function setupEventListeners() {
         btn.disabled = false;
     });
 
-    // The name friends see in listen along
-    document.getElementById('la-name').addEventListener('change', (e) => {
-        window.electronAPI.setDisplayName(e.target.value).then(applyPlayerInfo);
-    });
-
     // Global shortcuts
     const saveHotkeys = () => window.electronAPI.setHotkeys({
         toggle: document.getElementById('hotkey-toggle').value,
@@ -657,9 +654,14 @@ function setupMouseTracking() {
         const isOverYtm = !ytmCard.classList.contains('hidden') &&
             isPointInRect(e.clientX, e.clientY, ytmCard.getBoundingClientRect());
 
+        // Sign-up gate
+        const gateCard = document.getElementById('gate-card');
+        const isOverGate = !gateCard.classList.contains('hidden') &&
+            isPointInRect(e.clientX, e.clientY, gateCard.querySelector('.gate-inner').getBoundingClientRect());
+
         // If over interactive elements, capture mouse events
         if (isOverSettings || isOverMenu || isOverRecap || isOverControls || isOverArc || isOverPuck ||
-            isOverSetup || isOverGrip || isOverGames || isOverVote || isOverYtm || state.scrubbing || state.resizing) {
+            isOverSetup || isOverGrip || isOverGames || isOverVote || isOverYtm || isOverGate || state.scrubbing || state.resizing) {
             window.electronAPI.setIgnoreMouse(false);
         } else {
             window.electronAPI.setIgnoreMouse(true);
@@ -1250,13 +1252,6 @@ function applyPlayerInfo(info) {
     }
     document.querySelectorAll('.style-btn[data-style="source"][data-value="local"], .style-btn[data-style="source"][data-value="ytmusic"]')
         .forEach(btn => { btn.disabled = !info.localAvailable; });
-
-    // Listen-along name (blank = the Spotify / account name)
-    const nameInput = document.getElementById('la-name');
-    if (nameInput && document.activeElement !== nameInput) {
-        nameInput.value = info.displayName || '';
-        nameInput.placeholder = info.nameHint ? `Your name (currently "${info.nameHint}")` : 'Your name (what friends see)';
-    }
 
     // Global shortcuts
     const hk = info.hotkeys || {};
@@ -2844,16 +2839,12 @@ function setupCloudUI() {
     const save = async () => {
         const st = document.getElementById('acct-status');
         st.textContent = 'Saving…';
-        const r = await api.updateProfile({
-            displayName: document.getElementById('acct-name').value,
-            handle: document.getElementById('acct-handle').value
-        });
+        const r = await api.updateProfile({ displayName: document.getElementById('acct-name').value });
         st.textContent = r && r.success ? 'Saved' : (r && r.error) || 'Could not save';
         if (r && r.status) renderCloud(r.status);
     };
     document.getElementById('acct-save').addEventListener('click', save);
     document.getElementById('acct-name').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
-    document.getElementById('acct-handle').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
 
     const addFriend = async () => {
         const input = document.getElementById('friend-handle');
@@ -2932,9 +2923,8 @@ function renderCloud(status) {
 
     const u = status.user;
     const nameInput = document.getElementById('acct-name');
-    const handleInput = document.getElementById('acct-handle');
     if (document.activeElement !== nameInput) nameInput.value = u.displayName || '';
-    if (document.activeElement !== handleInput) handleInput.value = u.handle || '';
+    document.getElementById('acct-handle-static').textContent = '@' + (u.handle || '');
     const img = document.getElementById('acct-avatar-img');
     const letter = document.getElementById('acct-avatar-letter');
     letter.textContent = (u.displayName || '?').trim().charAt(0).toUpperCase();
@@ -2945,6 +2935,18 @@ function renderCloud(status) {
     } else {
         img.hidden = true;
         img.removeAttribute('src');
+    }
+    // Owner-only: download counts
+    const dl = document.getElementById('acct-downloads');
+    if (status.isOwner) {
+        dl.classList.remove('hidden');
+        window.electronAPI.cloud.downloadStats().then(s => {
+            if (!s || !s.success) { document.getElementById('dl-detail').textContent = (s && s.error) || 'Could not load'; return; }
+            document.getElementById('dl-total').textContent = s.total.toLocaleString();
+            document.getElementById('dl-detail').textContent = `${s.mac.toLocaleString()} Mac · ${s.win.toLocaleString()} Windows · latest ${s.latest || '–'}`;
+        }).catch(() => {});
+    } else {
+        dl.classList.add('hidden');
     }
     const avatarBtn = document.getElementById('acct-avatar');
     avatarBtn.classList.toggle('static', !status.canUpload);
@@ -3021,4 +3023,28 @@ function renderUpdater(status) {
     } else {
         banner.classList.add('hidden');
     }
+}
+
+// ============================================================================
+// SIGN-UP GATE
+// ============================================================================
+function renderGate(g) {
+    if (!g) return;
+    state.gate = g;
+    const card = document.getElementById('gate-card');
+    card.classList.toggle('hidden', !g.required);
+    elements.body.classList.toggle('gated', Boolean(g.required));
+}
+
+function setupGate() {
+    const api = window.electronAPI.gate;
+    if (!api) return;
+    api.status().then(renderGate).catch(() => {});
+    api.onStatus(renderGate);
+    document.getElementById('gate-signin').addEventListener('click', async () => {
+        const note = document.getElementById('gate-note');
+        note.textContent = 'Opening your browser…';
+        const r = await window.electronAPI.cloud.signIn();
+        note.textContent = r && r.success ? 'Finish signing in with Google in your browser, then come back.' : (r && r.error) || 'Could not start sign-in';
+    });
 }

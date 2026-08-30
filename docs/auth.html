@@ -65,6 +65,7 @@
       go.textContent = 'Try again';
       if (err && err.code === 'auth/popup-closed-by-user') return;
       if (err && err.code === 'auth/unauthorized-domain') msg.innerHTML += '<br><span class="fine">Add this page\'s domain under Firebase → Authentication → Settings → Authorized domains.</span>';
+      if (err && err.code === 'auth/operation-not-allowed') msg.innerHTML = '<span class="err">Google sign-in isn\'t switched on for this project yet.</span><br><span class="fine">The owner needs to enable Google under Firebase → Authentication → Sign-in method.</span>';
     }
   });
 })();

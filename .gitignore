@@ -1,18 +1,18 @@
-# Secrets — never commit real credentials
-.env
-
-# Dependencies & environments
-node_modules/
-venv/
 
 # Build output
-dist/
-
-# Local junk
-.DS_Store
-spotify-overlay.zip
-image.png
-
+# Dependencies & environments
 # Firebase emulator output
+# Local junk
+# Secrets — never commit real credentials
 *-debug.log
+.DS_Store
+.env
 .firebase/
+dist/
+firestore-debug.log
+image.png
+node_modules/
+pglite-debug.log
+spotify-overlay.zip
+ui-debug.log
+venv/

@@ -60,9 +60,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
         decline: (uid) => ipcRenderer.invoke('cloud-decline', uid),
         remove: (uid) => ipcRenderer.invoke('cloud-remove', uid),
         joinFriend: (code) => ipcRenderer.invoke('cloud-join-friend', code),
+        downloadStats: () => ipcRenderer.invoke('download-stats'),
         testSignIn: (token) => ipcRenderer.invoke('cloud-test-sign-in', token),
         uploadAvatarFile: (file) => ipcRenderer.invoke('cloud-upload-avatar-file', file),
         onStatus: (callback) => { ipcRenderer.on('cloud-status', (event, status) => callback(status)); }
+    },
+
+    // Sign-up gate (after a few minutes without an account)
+    gate: {
+        status: () => ipcRenderer.invoke('gate-status'),
+        onStatus: (callback) => { ipcRenderer.on('gate-status', (event, status) => callback(status)); }
     },
 
     // Updates

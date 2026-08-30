@@ -3,5 +3,6 @@
   "authDomain": "cadence-f4b4e.firebaseapp.com",
   "projectId": "cadence-f4b4e",
   "storageBucket": "",
-  "authPage": "https://mowke.github.io/cadence/auth.html"
+  "authPage": "https://mowke.github.io/cadence/auth.html",
+  "ownerEmails": ["samahith@gmail.com"]
 }

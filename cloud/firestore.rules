@@ -33,7 +33,8 @@ service cloud.firestore {
     match /handles/{handle} {
       allow read: if signedIn();
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid
-        && handle.matches('^[a-z0-9_]{3,20}$');
+        && handle.matches('^[a-z0-9_]{3,20}$')
+        && handle != 'moke';
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 

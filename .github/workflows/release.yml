@@ -56,7 +56,7 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.exe
-            dist/*.yml
+            dist/latest*.yml
             dist/*.blockmap
           if-no-files-found: error
 

@@ -12,3 +12,7 @@ dist/
 .DS_Store
 spotify-overlay.zip
 image.png
+
+# Firebase emulator output
+*-debug.log
+.firebase/

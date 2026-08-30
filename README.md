@@ -156,7 +156,7 @@ Press **Esc** to leave a game or close the panel.
 
 - **Drag the gear** to move the overlay; **click it** for settings
 - **Shortcuts** (global, configurable in settings): **Ctrl/⌘ + Shift + H** shows or hides the overlay, **Ctrl/⌘ + Shift + L** opens settings from anywhere
-- **Resize** with the Size slider in settings, or drag the **⤡ grip** at the overlay's bottom-right corner
+- **Resize**: the Size slider in settings zooms everything; the **⤢ grip** just below the settings gear stretches the overlay's shape — drag right for wider, up for taller, each on its own (double-click it to reset). Small / Medium / Large put the normal proportions back, and you can keep up to three sizes of your own with the **+** slots under them
 - **Auto-hide when paused**: pick 1 / 5 / 15 minutes and the overlay fades out after that long without music, fading back in when something plays; hover it to peek
 - The window is click-through everywhere except its controls. If something underneath still isn't getting your clicks, turn on **Click-through lock** (settings, or the tray menu): the overlay then never takes the mouse unless a panel is open
 - On Windows the overlay re-asserts itself above borderless/windowed-fullscreen apps (games, video). Exclusive-fullscreen games can't be overlaid by any window — switch the game to borderless

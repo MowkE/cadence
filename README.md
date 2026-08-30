@@ -4,7 +4,7 @@
 
 <h1 align="center">Cadence</h1>
 
-<p align="center">A floating, click-through desktop overlay for Spotify — synced karaoke lyrics, an audio-reactive visualizer, album-adaptive theming, a 3D tilt with holographic frames, and a pile of toggleable effects. Now with <b>listen along</b>: share a link and your friends see your lyrics live. Mac + Windows.</p>
+<p align="center">A floating, click-through desktop overlay for Spotify and YTmusic — synced karaoke lyrics, an audio-reactive visualizer, album-adaptive theming, a 3D tilt with holographic frames, and a pile of toggleable effects. Now with <b>listen along</b>: share a link and your friends see your lyrics live. Mac + Windows.</p>
 
 <p align="center">
   <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-arm64.dmg"><img alt="Download for Mac (Apple Silicon)" src="https://img.shields.io/badge/Download-Mac%20%28Apple%20Silicon%29-1ed760?style=for-the-badge&logo=apple&logoColor=white"></a>

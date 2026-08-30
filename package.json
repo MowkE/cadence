@@ -1,7 +1,7 @@
 {
   "name": "spotify-overlay",
-  "version": "2.7.2",
-  "description": "Cadence — a floating Spotify lyrics overlay: synced lyrics, 3D holographic frames, album theming, listen along with friends",
+  "version": "2.8.0",
+  "description": "Cadence \u2014 a floating Spotify lyrics overlay: synced lyrics, 3D holographic frames, album theming, listen along with friends",
   "author": "Samahith Thellakal",
   "license": "MIT",
   "homepage": "https://github.com/MowkE/cadence",
@@ -12,7 +12,8 @@
   "main": "main.js",
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "electron": "^43.3.0",
@@ -40,13 +41,16 @@
       "src/**/*",
       "assets/icon.png",
       "assets/tray.png",
-      "assets/tray@2x.png"
+      "assets/tray@2x.png",
+      "src/cloud-config.json"
     ],
     "afterPack": "build/afterPack.js",
     "protocols": [
       {
         "name": "Cadence",
-        "schemes": ["cadence"]
+        "schemes": [
+          "cadence"
+        ]
       }
     ],
     "mac": {
@@ -55,7 +59,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "identity": null,
@@ -74,7 +81,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -85,6 +94,11 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Cadence",
       "artifactName": "Cadence-win-${arch}-Setup.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "MowkE",
+      "repo": "cadence"
     }
   }
 }

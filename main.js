@@ -9,7 +9,7 @@
  * - Tray icon (the only way to quit on Windows), cadence:// deep links
  */
 
-const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard, globalShortcut, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -20,6 +20,8 @@ const { getSyncedLyrics } = require('./lib/lyrics');
 const { createListenAlong } = require('./lib/listen-along');
 const { createLocalPlayer } = require('./lib/local-player');
 const { parseSpotifyLink, isShortLink, resolveShortLink, resolveTrackMeta } = require('./lib/spotify-link');
+const { createCloud } = require('./lib/cloud');
+const { createUpdater } = require('./lib/updater');
 
 // .env is a development convenience only — user credentials live in a
 // per-user config file (see loadCredentials)
@@ -77,6 +79,13 @@ function handleDeepLink(url) {
         pendingDeepLink = url;
         return;
     }
+    if (cloud && cloud.parseAuthLink(url)) {
+        cloud.handleAuthLink(url).then(r => {
+            console.log('Cloud sign-in:', r.success ? 'signed in' : r.error);
+            if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.show(); mainWindow.webContents.send('open-settings'); }
+        });
+        return;
+    }
     const code = listenAlong.parseCode(url);
     if (!code) return;
     console.log('Joining listen-along session from link');
@@ -93,6 +102,7 @@ const credentialsPath = () => path.join(userDataPath(), 'spotify-credentials.jso
 const tokenPath = () => path.join(userDataPath(), 'spotify-tokens.json');
 const settingsPath = () => path.join(userDataPath(), 'settings.json');
 const statsPath = () => path.join(userDataPath(), 'daily-stats.json');
+const cloudTokenPath = () => path.join(userDataPath(), 'cloud-auth.json');
 
 // Where the old Python helper (spotipy) cached tokens — imported once so
 // nobody has to re-approve the app after the upgrade
@@ -183,6 +193,14 @@ function credentialsConfigured() {
 let spotify = null;
 let localPlayer = null;
 let listenAlong = null;
+let cloud = null;
+let updater = null;
+
+// Accounts config ships in the build; CADENCE_CLOUD_CONFIG / _EMULATOR are for tests
+function loadCloudConfig() {
+    const file = process.env.CADENCE_CLOUD_CONFIG || path.join(__dirname, 'src', 'cloud-config.json');
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { return {}; }
+}
 
 function createClients() {
     localPlayer = createLocalPlayer();
@@ -217,6 +235,27 @@ function createClients() {
         }
     });
     listenAlong.setRoomVote(Boolean(settings.roomVote));
+
+    cloud = createCloud({
+        config: loadCloudConfig(),
+        tokenFile: cloudTokenPath(),
+        openExternal: (url) => shell.openExternal(url),
+        appVersion: app.getVersion(),
+        emulator: process.env.CADENCE_CLOUD_EMULATOR
+            ? { auth: 'http://127.0.0.1:9099', firestore: 'http://127.0.0.1:8080', storage: 'http://127.0.0.1:9199' }
+            : null
+    });
+    cloud.onChange((status) => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('cloud-status', status);
+    });
+
+    updater = createUpdater({
+        app, shell, version: app.getVersion(),
+        onStatus: (status) => {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater-status', status);
+            updateTrayMenu();
+        }
+    });
 }
 
 // ============================================================================
@@ -278,6 +317,8 @@ let lastKnownName = null;
 async function getDisplayName() {
     const custom = String(settings.displayName || '').trim();
     if (custom) return custom.slice(0, 40);
+    const account = cloud && cloud.status().user;
+    if (account && account.displayName) { lastKnownName = account.displayName; return account.displayName; }
     try {
         const profile = await player.getProfile();
         lastKnownName = profile && profile.display_name ? profile.display_name : null;
@@ -611,6 +652,15 @@ function updateTrayMenu() {
             },
             { type: 'separator' }
         ] : []),
+        ...(updater && updater.status().available ? [
+            {
+                label: updater.status().downloaded
+                    ? `Restart to update to ${updater.status().available.version}`
+                    : `Cadence ${updater.status().available.version} is available…`,
+                click: () => updater.install()
+            },
+            { type: 'separator' }
+        ] : []),
         { label: 'Quit Cadence', click: () => app.quit() }
     ]);
     tray.setContextMenu(menu);
@@ -736,6 +786,14 @@ ipcMain.handle('get-current-track', async () => {
     result.source = source;
     recordPlayback(result);
     listenAlong.onHostPoll(result);
+    if (cloud && cloud.status().signedIn) {
+        const la = listenAlong.status();
+        cloud.publishPresence({
+            track: result.success ? result.track : null,
+            playing: Boolean(result.success && result.track && result.track.is_playing),
+            session: la.mode === 'host' ? { code: la.code, link: la.link } : null
+        });
+    }
     return result;
 });
 
@@ -793,6 +851,58 @@ ipcMain.handle('listen-along-request-action', (event, reqId, action) => listenAl
 
 // Host: hand the session to a listener (and stay on as one)
 ipcMain.handle('listen-along-handoff', (event, toId) => listenAlong.handoff(String(toId || '')));
+
+// ============================================================================
+// ACCOUNTS + FRIENDS (lib/cloud.js) and UPDATES (lib/updater.js)
+// ============================================================================
+ipcMain.handle('cloud-status', () => cloud.status());
+ipcMain.handle('cloud-sign-in', () => cloud.startSignIn());
+ipcMain.handle('cloud-sign-out', () => cloud.signOut());
+ipcMain.handle('cloud-update-profile', (event, patch) => cloud.updateProfile(patch && typeof patch === 'object' ? patch : {}));
+ipcMain.handle('cloud-friends', () => cloud.friends());
+ipcMain.handle('cloud-lookup', (event, handle) => cloud.lookup(String(handle || '')));
+ipcMain.handle('cloud-request', (event, handle) => cloud.sendRequest(String(handle || '')));
+ipcMain.handle('cloud-accept', (event, uid) => cloud.accept(String(uid || '')));
+ipcMain.handle('cloud-decline', (event, uid) => cloud.decline(String(uid || '')));
+ipcMain.handle('cloud-remove', (event, uid) => cloud.removeFriend(String(uid || '')));
+
+// Pick a picture, square-crop + shrink it here (256px JPEG), upload
+ipcMain.handle('cloud-pick-avatar', async () => {
+    const pick = await dialog.showOpenDialog(mainWindow, {
+        title: 'Choose a profile picture',
+        properties: ['openFile'],
+        filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'heic', 'tiff', 'bmp'] }]
+    });
+    if (pick.canceled || !pick.filePaths.length) return { success: false, cancelled: true };
+    return uploadAvatarFromFile(pick.filePaths[0]);
+});
+
+async function uploadAvatarFromFile(file) {
+    let image = nativeImage.createFromPath(file);
+    if (image.isEmpty()) return { success: false, error: 'That file is not an image Cadence can read' };
+    const { width, height } = image.getSize();
+    const side = Math.min(width, height);
+    image = image.crop({ x: Math.floor((width - side) / 2), y: Math.floor((height - side) / 2), width: side, height: side })
+        .resize({ width: 256, height: 256, quality: 'best' });
+    return cloud.uploadAvatar(image.toJPEG(88), 'image/jpeg');
+}
+ipcMain.handle('cloud-upload-avatar-file', (event, file) => uploadAvatarFromFile(String(file || '')));
+
+// Join a friend's session straight from the friends list
+ipcMain.handle('cloud-join-friend', async (event, code) => {
+    const r = await listenAlong.join(String(code || ''));
+    if (r && r.success && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('open-settings');
+    return r;
+});
+
+// Test hook: with the emulators, sign in with a fake Google token (no browser)
+if (process.env.CADENCE_CLOUD_EMULATOR) {
+    ipcMain.handle('cloud-test-sign-in', (event, token) => cloud.signInWithGoogleIdToken(String(token || '')));
+}
+
+ipcMain.handle('updater-status', () => updater.status());
+ipcMain.handle('updater-check', () => updater.check());
+ipcMain.handle('updater-install', () => updater.install());
 
 // Room vote: the host lets the room pick the next song; everyone casts
 ipcMain.handle('listen-along-room-vote', (event, on) => {
@@ -1077,6 +1187,8 @@ app.whenReady().then(() => {
     // Global shortcuts: show/hide the overlay, open settings (the way in when
     // the click-through lock makes the gear button unclickable)
     registerHotkeys();
+    cloud.restore();
+    updater.start();
 
     // First launch after the upgrade with keys but no tokens: start sign-in
     // (existing users get their tokens imported from the old Python cache)

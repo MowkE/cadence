@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co https://*.mzstatic.com https://*.dzcdn.net https://*.googleusercontent.com https://*.ytimg.com;">
+        content="default-src 'self'; script-src 'self' 'unsafe-inline' https://kelvinau.github.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.scdn.co https://*.spotifycdn.com https://i.scdn.co https://*.mzstatic.com https://*.dzcdn.net https://*.googleusercontent.com https://*.ytimg.com https://firebasestorage.googleapis.com http://127.0.0.1:9199;">
     <title>Cadence</title>
 
     <!-- Google Fonts -->
@@ -155,6 +155,45 @@
         </div>
 
         <div class="settings-scroll">
+            <div class="settings-section" id="account-section">
+                <h3>Account</h3>
+                <div id="acct-out">
+                    <p class="la-hint acct-blurb">Keep your name and picture everywhere, add friends, see what they're listening to, and join them in one tap.</p>
+                    <button id="acct-signin" class="action-btn la-btn">Continue with Google</button>
+                    <div class="la-hint" id="acct-note"></div>
+                </div>
+                <div id="acct-in" class="hidden">
+                    <div class="acct-row">
+                        <button class="acct-avatar" id="acct-avatar" title="Change picture">
+                            <img id="acct-avatar-img" alt="" hidden>
+                            <span id="acct-avatar-letter"></span>
+                            <span class="acct-avatar-edit">Change</span>
+                        </button>
+                        <div class="acct-meta">
+                            <input id="acct-name" class="field-input" maxlength="40" placeholder="Your name" spellcheck="false" autocomplete="off">
+                            <div class="acct-handle-row"><span class="acct-at">@</span><input id="acct-handle" class="field-input" maxlength="20" placeholder="handle" spellcheck="false" autocomplete="off"></div>
+                        </div>
+                    </div>
+                    <div class="la-actions">
+                        <button id="acct-save" class="action-btn la-btn">Save</button>
+                        <button id="acct-signout" class="action-btn recap-btn">Sign out</button>
+                    </div>
+                    <div class="la-hint" id="acct-status"></div>
+                </div>
+            </div>
+
+            <div class="settings-section hidden" id="friends-section">
+                <h3>Friends</h3>
+                <div class="la-join-row">
+                    <input id="friend-handle" type="text" placeholder="@handle" spellcheck="false" autocomplete="off">
+                    <button id="friend-add" class="action-btn recap-btn">Add</button>
+                </div>
+                <div class="la-hint" id="friend-msg"></div>
+                <div id="friend-requests" class="friend-list"></div>
+                <div id="friend-list" class="friend-list"></div>
+                <div class="la-hint" id="friend-empty">No friends yet. Share your @handle and they can add you.</div>
+            </div>
+
             <div class="settings-section">
                 <h3>Lyric Style</h3>
                 <div class="style-options">
@@ -441,6 +480,11 @@
                 <h3>Karaoke &amp; games</h3>
                 <button id="games-btn" class="action-btn la-btn">🎤 Open Karaoke &amp; games</button>
                 <div class="la-hint">Karaoke, duets, guess the song, and three more — solo or with the friends in your session.</div>
+            </div>
+
+            <div id="update-banner" class="hidden">
+                <span id="update-text"></span>
+                <button id="update-btn" class="action-btn recap-btn">Download</button>
             </div>
 
             <div class="settings-footer">

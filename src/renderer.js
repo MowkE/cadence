@@ -49,7 +49,10 @@ const state = {
     playerInfo: null,
     playerSource: 'auto',         // 'auto' | 'local' | 'api'
     clickThroughLock: false,
-    roomVote: false,              // host: the room picks the next song (lives in the session)
+    roomVote: false,
+    cloud: null,                  // account status from the main process
+    friendsData: null,
+    updater: null,              // host: the room picks the next song (lives in the session)
 
     // Auto-hide when paused
     autoHideMin: 0,               // 0 = off
@@ -164,6 +167,9 @@ async function init() {
         console.error('Could not check credentials:', e);
     }
     window.electronAPI.onPlayerInfo(applyPlayerInfo);
+
+    // Account, friends, updates
+    setupCloudUI();
 
     // Listen along: reflect any session the main process already has
     // (e.g. we were launched from a cadence:// link)
@@ -2755,3 +2761,210 @@ function updateVisualizerMode() {
 // START APPLICATION
 // ============================================================================
 document.addEventListener('DOMContentLoaded', init);
+
+// ============================================================================
+// ACCOUNT, FRIENDS, UPDATES
+// ============================================================================
+let friendsTimer = null;
+
+function setupCloudUI() {
+    const api = window.electronAPI.cloud;
+    const up = window.electronAPI.updater;
+    if (!api) return;
+
+    api.status().then(renderCloud).catch(() => {});
+    api.onStatus(renderCloud);
+    up.status().then(renderUpdater).catch(() => {});
+    up.onStatus(renderUpdater);
+
+    document.getElementById('acct-signin').addEventListener('click', async () => {
+        const note = document.getElementById('acct-note');
+        note.textContent = 'Opening your browser…';
+        const r = await api.signIn();
+        note.textContent = r && r.success ? 'Finish signing in with Google in your browser, then come back here.' : (r && r.error) || 'Could not start sign-in';
+    });
+    document.getElementById('acct-signout').addEventListener('click', () => api.signOut().then(renderCloud));
+    document.getElementById('acct-avatar').addEventListener('click', async () => {
+        const st = document.getElementById('acct-status');
+        st.textContent = 'Uploading…';
+        const r = await api.pickAvatar();
+        st.textContent = r && r.success ? 'Picture updated' : (r && r.cancelled ? '' : (r && r.error) || 'Could not upload');
+    });
+    const save = async () => {
+        const st = document.getElementById('acct-status');
+        st.textContent = 'Saving…';
+        const r = await api.updateProfile({
+            displayName: document.getElementById('acct-name').value,
+            handle: document.getElementById('acct-handle').value
+        });
+        st.textContent = r && r.success ? 'Saved' : (r && r.error) || 'Could not save';
+        if (r && r.status) renderCloud(r.status);
+    };
+    document.getElementById('acct-save').addEventListener('click', save);
+    document.getElementById('acct-name').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+    document.getElementById('acct-handle').addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+
+    const addFriend = async () => {
+        const input = document.getElementById('friend-handle');
+        const msg = document.getElementById('friend-msg');
+        const handle = input.value.trim();
+        if (!handle) { msg.textContent = 'Type a friend\'s @handle'; return; }
+        msg.textContent = 'Sending…';
+        const r = await api.request(handle);
+        if (r && r.success) {
+            input.value = '';
+            msg.textContent = r.accepted ? `You and ${r.accepted.displayName} are now friends` : r.already ? `Already asked ${r.sent.displayName} — waiting on them` : `Request sent to ${r.sent.displayName}`;
+            refreshFriends();
+        } else {
+            msg.textContent = (r && r.error) || 'Could not send';
+        }
+    };
+    document.getElementById('friend-add').addEventListener('click', addFriend);
+    document.getElementById('friend-handle').addEventListener('keydown', e => { if (e.key === 'Enter') addFriend(); });
+
+    const onListClick = async (e) => {
+        const btn = e.target.closest('button[data-act]');
+        if (!btn) return;
+        btn.disabled = true;
+        const uid = btn.dataset.uid;
+        const act = btn.dataset.act;
+        let r;
+        if (act === 'accept') r = await api.accept(uid);
+        else if (act === 'decline') r = await api.decline(uid);
+        else if (act === 'remove') r = await api.remove(uid);
+        else if (act === 'join') r = await api.joinFriend(btn.dataset.code);
+        if (r && !r.success && r.error) document.getElementById('friend-msg').textContent = r.error;
+        refreshFriends();
+    };
+    document.getElementById('friend-requests').addEventListener('click', onListClick);
+    document.getElementById('friend-list').addEventListener('click', onListClick);
+
+    document.getElementById('update-btn').addEventListener('click', () => up.install());
+
+    // Friends refresh while the settings panel is open
+    const menuObserver = new MutationObserver(() => {
+        const open = !elements.settingsMenu.classList.contains('hidden');
+        clearInterval(friendsTimer);
+        friendsTimer = null;
+        if (open && state.cloud && state.cloud.signedIn) {
+            refreshFriends();
+            friendsTimer = setInterval(refreshFriends, 60000);
+        }
+    });
+    menuObserver.observe(elements.settingsMenu, { attributes: true, attributeFilter: ['class'] });
+}
+
+function renderCloud(status) {
+    if (!status) return;
+    state.cloud = status;
+    const out = document.getElementById('acct-out');
+    const inn = document.getElementById('acct-in');
+    const friendsSection = document.getElementById('friends-section');
+    const note = document.getElementById('acct-note');
+    const signInBtn = document.getElementById('acct-signin');
+
+    if (!status.configured) {
+        out.classList.remove('hidden');
+        inn.classList.add('hidden');
+        friendsSection.classList.add('hidden');
+        signInBtn.disabled = true;
+        note.textContent = 'Accounts aren\'t switched on in this build yet.';
+        return;
+    }
+    signInBtn.disabled = Boolean(status.busy);
+    if (status.error && !status.signedIn) note.textContent = status.error;
+
+    out.classList.toggle('hidden', status.signedIn);
+    inn.classList.toggle('hidden', !status.signedIn);
+    friendsSection.classList.toggle('hidden', !status.signedIn);
+    if (!status.signedIn) return;
+
+    const u = status.user;
+    const nameInput = document.getElementById('acct-name');
+    const handleInput = document.getElementById('acct-handle');
+    if (document.activeElement !== nameInput) nameInput.value = u.displayName || '';
+    if (document.activeElement !== handleInput) handleInput.value = u.handle || '';
+    const img = document.getElementById('acct-avatar-img');
+    const letter = document.getElementById('acct-avatar-letter');
+    letter.textContent = (u.displayName || '?').trim().charAt(0).toUpperCase();
+    if (u.photoUrl) {
+        img.src = u.photoUrl;
+        img.hidden = false;
+        img.onerror = () => { img.hidden = true; };
+    } else {
+        img.hidden = true;
+        img.removeAttribute('src');
+    }
+    if (status.error) document.getElementById('acct-status').textContent = status.error;
+    if (!elements.settingsMenu.classList.contains('hidden')) refreshFriends();
+}
+
+async function refreshFriends() {
+    if (!state.cloud || !state.cloud.signedIn) return;
+    try {
+        const data = await window.electronAPI.cloud.friends();
+        state.friendsData = data;
+        renderFriends(data);
+    } catch (e) {
+        console.error('friends:', e);
+    }
+}
+
+function avatarHtml(user, size) {
+    const letter = escapeHtmlText((user.displayName || '?').trim().charAt(0).toUpperCase());
+    return user.photoUrl
+        ? `<span class="f-avatar" style="--s:${size}px"><img src="${escapeHtmlText(user.photoUrl)}" alt="" onerror="this.remove()"><i>${letter}</i></span>`
+        : `<span class="f-avatar" style="--s:${size}px"><i>${letter}</i></span>`;
+}
+
+function renderFriends(data) {
+    const reqBox = document.getElementById('friend-requests');
+    const listBox = document.getElementById('friend-list');
+    const empty = document.getElementById('friend-empty');
+    const requests = (data && data.requests) || [];
+    const friends = (data && data.friends) || [];
+
+    reqBox.innerHTML = requests.length ? `<div class="f-title">Requests</div>` + requests.map(r => `
+        <div class="f-row">
+            ${avatarHtml(r, 32)}
+            <div class="f-meta"><div class="f-name">${escapeHtmlText(r.displayName)}</div><div class="f-sub">@${escapeHtmlText(r.handle)} wants to be friends</div></div>
+            <button class="la-req-btn" data-act="accept" data-uid="${escapeHtmlText(r.uid)}" title="Accept">✓</button>
+            <button class="la-req-btn" data-act="decline" data-uid="${escapeHtmlText(r.uid)}" title="Decline">✕</button>
+        </div>`).join('') : '';
+
+    listBox.innerHTML = friends.map(f => {
+        const status = f.session ? `Hosting a session${f.listening ? ` · ${f.listening.name}` : ''}`
+            : f.listening ? `${f.listening.playing ? '▶' : '⏸'} ${f.listening.name} — ${f.listening.artist}`
+                : f.online ? 'Online' : 'Offline';
+        return `
+        <div class="f-row${f.online ? ' online' : ''}">
+            ${avatarHtml(f, 32)}
+            <div class="f-meta"><div class="f-name">${escapeHtmlText(f.displayName)} <span class="f-handle">@${escapeHtmlText(f.handle)}</span></div><div class="f-sub"><span class="f-dot"></span>${escapeHtmlText(status)}</div></div>
+            ${f.session ? `<button class="la-req-btn f-join" data-act="join" data-uid="${escapeHtmlText(f.uid)}" data-code="${escapeHtmlText(f.session.code)}" title="Join their session">Join</button>` : ''}
+            <button class="la-req-btn f-remove" data-act="remove" data-uid="${escapeHtmlText(f.uid)}" title="Remove friend">✕</button>
+        </div>`;
+    }).join('');
+    empty.classList.toggle('hidden', friends.length > 0 || requests.length > 0);
+}
+
+function renderUpdater(status) {
+    if (!status) return;
+    state.updater = status;
+    const banner = document.getElementById('update-banner');
+    const text = document.getElementById('update-text');
+    const btn = document.getElementById('update-btn');
+    if (status.available) {
+        banner.classList.remove('hidden');
+        if (status.mode === 'auto') {
+            text.textContent = status.downloaded ? `Cadence ${status.available.version} is ready` : `Downloading Cadence ${status.available.version}… ${status.progress || 0}%`;
+            btn.textContent = status.downloaded ? 'Restart to update' : 'Downloading…';
+            btn.disabled = !status.downloaded;
+        } else {
+            text.textContent = `Cadence ${status.available.version} is out — you have ${status.current}`;
+            btn.textContent = 'Download';
+            btn.disabled = false;
+        }
+    } else {
+        banner.classList.add('hidden');
+    }
+}

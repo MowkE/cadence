@@ -1,0 +1,58 @@
+rules_version = '2';
+
+// Cadence accounts & friends — paste this into Firebase console → Firestore → Rules
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    // Is the caller on {uid}'s friends list?
+    function isFriendOf(uid) {
+      return signedIn() && exists(/databases/$(db)/documents/friends/$(uid)/list/$(request.auth.uid));
+    }
+
+    // Public profile: any signed-in user can look people up by handle
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['displayName', 'handle', 'photoUrl', 'createdAt', 'updatedAt'])
+        && request.resource.data.displayName is string && request.resource.data.displayName.size() <= 40
+        && request.resource.data.handle is string && request.resource.data.handle.matches('^[a-z0-9_]{3,20}$');
+      allow delete: if false;
+
+      // Incoming friend requests: users/{uid}/requests/{fromUid}
+      match /requests/{fromUid} {
+        allow read: if isOwner(uid) || isOwner(fromUid);
+        allow create: if isOwner(fromUid) && fromUid != uid
+          && request.resource.data.from == fromUid
+          && request.resource.data.keys().hasOnly(['from', 'fromName', 'fromHandle', 'fromPhoto', 'createdAt']);
+        allow delete: if isOwner(uid) || isOwner(fromUid);
+      }
+    }
+
+    // One document per handle, so handles stay unique
+    match /handles/{handle} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && handle.matches('^[a-z0-9_]{3,20}$');
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Friend lists: friends/{uid}/list/{friendUid} — written on both sides when
+    // a request is accepted; either side can remove the friendship
+    match /friends/{uid}/list/{friendUid} {
+      allow read: if isOwner(uid) || isOwner(friendUid);
+      allow create: if
+        // I accept a request that {friendUid} sent me: add them to my list
+        (isOwner(uid) && exists(/databases/$(db)/documents/users/$(uid)/requests/$(friendUid)))
+        // …and add myself to their list
+        || (isOwner(friendUid) && exists(/databases/$(db)/documents/users/$(request.auth.uid)/requests/$(uid)));
+      allow delete: if isOwner(uid) || isOwner(friendUid);
+    }
+
+    // What someone is listening to right now — visible to their friends
+    match /presence/{uid} {
+      allow read: if isOwner(uid) || isFriendOf(uid);
+      allow write: if isOwner(uid);
+    }
+  }
+}

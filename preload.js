@@ -39,6 +39,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Notch bar layout: pin a slim strip to the top-centre of the screen
     setNotchLayout: (on) => ipcRenderer.invoke('notch-layout', on),
 
+    // Accounts + friends (Cadence Cloud)
+    cloud: {
+        status: () => ipcRenderer.invoke('cloud-status'),
+        signIn: () => ipcRenderer.invoke('cloud-sign-in'),
+        signOut: () => ipcRenderer.invoke('cloud-sign-out'),
+        updateProfile: (patch) => ipcRenderer.invoke('cloud-update-profile', patch),
+        pickAvatar: () => ipcRenderer.invoke('cloud-pick-avatar'),
+        friends: () => ipcRenderer.invoke('cloud-friends'),
+        lookup: (handle) => ipcRenderer.invoke('cloud-lookup', handle),
+        request: (handle) => ipcRenderer.invoke('cloud-request', handle),
+        accept: (uid) => ipcRenderer.invoke('cloud-accept', uid),
+        decline: (uid) => ipcRenderer.invoke('cloud-decline', uid),
+        remove: (uid) => ipcRenderer.invoke('cloud-remove', uid),
+        joinFriend: (code) => ipcRenderer.invoke('cloud-join-friend', code),
+        testSignIn: (token) => ipcRenderer.invoke('cloud-test-sign-in', token),
+        uploadAvatarFile: (file) => ipcRenderer.invoke('cloud-upload-avatar-file', file),
+        onStatus: (callback) => { ipcRenderer.on('cloud-status', (event, status) => callback(status)); }
+    },
+
+    // Updates
+    updater: {
+        status: () => ipcRenderer.invoke('updater-status'),
+        check: () => ipcRenderer.invoke('updater-check'),
+        install: () => ipcRenderer.invoke('updater-install'),
+        onStatus: (callback) => { ipcRenderer.on('updater-status', (event, status) => callback(status)); }
+    },
+
     // Ambient mode notifications from the main process
     onAmbientMode: (callback) => {
         ipcRenderer.on('ambient-mode', (event, on) => callback(on));

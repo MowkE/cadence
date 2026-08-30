@@ -3832,3 +3832,208 @@ body.karaoke-mode #vote-card {
 #ytm-status:empty {
     display: none;
 }
+
+/* ============================================================================
+   ACCOUNT, FRIENDS, UPDATES
+   ============================================================================ */
+.acct-blurb {
+    margin: 0 0 10px;
+}
+
+.acct-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.acct-avatar {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(var(--dominant-color-rgb), 0.25);
+    overflow: hidden;
+    padding: 0;
+    cursor: pointer;
+    color: var(--text-primary);
+    font: 600 22px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+}
+
+.acct-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.acct-avatar-edit {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 3px 0 4px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.acct-avatar:hover .acct-avatar-edit {
+    opacity: 1;
+}
+
+.acct-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.acct-handle-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.acct-at {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.friend-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.friend-list:empty {
+    display: none;
+}
+
+.f-title {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.f-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.f-avatar {
+    position: relative;
+    width: var(--s, 32px);
+    height: var(--s, 32px);
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(var(--dominant-color-rgb), 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.f-avatar i {
+    font-style: normal;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.f-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.f-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.f-name {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.f-handle {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+.f-sub {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.f-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    flex-shrink: 0;
+}
+
+.f-row.online .f-dot {
+    background: #5ff2c2;
+    box-shadow: 0 0 6px #5ff2c2;
+}
+
+.f-join {
+    width: auto;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.f-remove {
+    opacity: 0.45;
+}
+
+.f-remove:hover {
+    opacity: 1;
+}
+
+#update-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(var(--dominant-color-rgb), 0.14);
+    border: 1px solid rgba(var(--dominant-color-rgb), 0.45);
+    font-size: 12px;
+}
+
+#update-banner .action-btn {
+    flex-shrink: 0;
+    padding: 7px 12px;
+}

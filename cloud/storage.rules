@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Cadence profile pictures — paste this into Firebase console → Storage → Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    // avatars/<uid>.jpg — anyone can view, only the owner can upload (images under 2 MB)
+    match /avatars/{file} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && file == request.auth.uid + '.jpg'
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

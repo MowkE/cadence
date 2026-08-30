@@ -120,6 +120,18 @@ Share your music with a friend who also has Cadence:
 
 How it works: your overlay publishes tiny "state" messages (track, position, playing) to a private, randomly named topic on [ntfy.sh](https://ntfy.sh) — only when something changes, never your audio or account. Guests subscribe to that topic. Anyone with the code can follow, so share it like a party invite. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
 
+## Accounts & friends
+
+Gear → **Account → Continue with Google**. Your Google name and picture come along; change either in the panel, upload your own picture, and pick a unique **@handle**.
+
+**Friends:** add people by @handle. They get a request they can accept or decline. Your friends list shows who's online, what they're listening to, and — when a friend is hosting a listen-along session — a **Join** button that drops you straight in. Your account name is what everyone sees in sessions and games.
+
+Accounts run on a Firebase project the app owner sets up once (see [SETUP-CLOUD.md](SETUP-CLOUD.md)); until then the Account section says so and everything else works without one.
+
+## Updates
+
+Cadence checks GitHub for a new version 15 seconds after launch and every 6 hours. On **Windows** it downloads quietly and installs the next time you open Cadence (or press *Restart to update*). On **Mac** it tells you in settings and the menu-bar icon and gives you a one-click download of the right DMG.
+
 ## Karaoke & games
 
 Gear → **🎤 Open Karaoke & games**. A setlist of room games that run on the synced lyric timing Cadence already has — no microphone, no extra accounts. Everyone in your listen-along session gets a colour, and that's how people show up in every game. The host starts the friends games; everyone's overlay follows.

@@ -852,6 +852,97 @@ body.adaptive-theme.lyric-style-retro .lyric-line {
 }
 
 /* ============================================================================
+   CONTRAST: LIGHT BACKGROUND (dark lyrics with a soft light halo)
+   ============================================================================
+   The renderer sets body.on-light when the Contrast setting says Light
+   background, or when Auto finds something bright behind the overlay. Only
+   the overlay's own text changes — panels and cards keep their glass.
+   !important because the three lyric styles, the album theme and the hover
+   frames all set colour + glow, and the ethereal glow animates text-shadow.
+   ============================================================================ */
+body.on-light .lyric-line,
+body.on-light .lyric-line.active,
+body.on-light .lyric-translation,
+body.on-light #ticker-lyric,
+body.on-light #ticker-track,
+body.on-light .notch-lyric,
+body.on-light .notch-cell,
+body.on-light #track-name,
+body.on-light #artist-name,
+body.on-light .kk-line,
+body.on-light .kk-current .kk-fill {
+    color: #111 !important;
+    text-shadow:
+        0 0 6px rgba(255, 255, 255, 0.9),
+        0 0 14px rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Supporting text sits a step back from the current line */
+body.on-light .lyric-translation,
+body.on-light #ticker-track,
+body.on-light .notch-cell,
+body.on-light #artist-name {
+    color: rgba(17, 17, 17, 0.72) !important;
+}
+
+/* Karaoke: the sweep fills dark over a faint base */
+body.on-light .kk-line {
+    color: rgba(17, 17, 17, 0.5) !important;
+}
+
+body.on-light .kk-current {
+    color: rgba(17, 17, 17, 0.28) !important;
+}
+
+/* The album accent stays as a faint tint around the current line */
+body.on-light.adaptive-theme .lyric-line.active,
+body.on-light.adaptive-theme #ticker-lyric,
+body.on-light .kk-current .kk-fill {
+    text-shadow:
+        0 0 6px rgba(255, 255, 255, 0.9),
+        0 0 14px rgba(255, 255, 255, 0.7),
+        0 0 26px rgba(var(--dominant-color-rgb), 0.35) !important;
+}
+
+/* Gradient lyrics can be as pale as the page: fall back to solid text */
+body.on-light.gradient-on .lyric-line.active .lyric-text {
+    background: none;
+    -webkit-text-fill-color: #111;
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.7));
+}
+
+/* Settings: Contrast control (Extras) */
+.settings-sub {
+    margin-top: 14px;
+    margin-bottom: 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-secondary);
+}
+
+.contrast-preview {
+    font-family: 'Inter', sans-serif;
+}
+
+.contrast-preview.contrast-auto {
+    background: linear-gradient(135deg, #f2f2f2 50%, #1a1a1a 50%);
+    color: var(--dominant-color);
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+}
+
+.contrast-preview.contrast-light {
+    background: #f2f2f2;
+    color: #111;
+}
+
+.contrast-preview.contrast-dark {
+    background: #1a1a1a;
+    color: #fff;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+/* ============================================================================
    TOGGLE SWITCHES (Extras section)
    ============================================================================ */
 .toggle-row {
@@ -4036,4 +4127,12 @@ body.karaoke-mode #vote-card {
 #update-banner .action-btn {
     flex-shrink: 0;
     padding: 7px 12px;
+}
+
+.acct-avatar.static {
+    cursor: default;
+}
+
+.acct-avatar.static .acct-avatar-edit {
+    display: none;
 }

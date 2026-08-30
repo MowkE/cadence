@@ -39,6 +39,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Notch bar layout: pin a slim strip to the top-centre of the screen
     setNotchLayout: (on) => ipcRenderer.invoke('notch-layout', on),
 
+    // Contrast: 'auto' | 'light' | 'dark'. Resolves to the detector's status
+    // ({ auto, background, permission }); Auto keeps sending updates below
+    setContrastMode: (mode) => ipcRenderer.invoke('set-contrast-mode', mode),
+    onContrastMode: (callback) => {
+        ipcRenderer.on('contrast-mode', (event, background, status) => callback(background, status));
+    },
+
     // Accounts + friends (Cadence Cloud)
     cloud: {
         status: () => ipcRenderer.invoke('cloud-status'),

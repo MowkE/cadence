@@ -15,12 +15,11 @@ Cadence's accounts, friends and profile pictures run on a free Firebase project 
 3. **Settings** tab → **Authorized domains** → **Add domain** → `mowke.github.io`.
    That's where Cadence's sign-in page lives.
 
-## 3. Turn on the database and storage
+## 3. Turn on the database (and, optionally, storage for uploaded pictures)
 
 1. **Build → Firestore Database → Create database** → keep the default location → start in **production mode** → **Create**.
 2. **Rules** tab → delete everything → paste the whole contents of [`cloud/firestore.rules`](cloud/firestore.rules) → **Publish**.
-3. **Build → Storage → Get started** → keep the defaults → **Done**.
-4. **Rules** tab → delete everything → paste the whole contents of [`cloud/storage.rules`](cloud/storage.rules) → **Publish**.
+3. *Optional — uploaded profile pictures.* Firebase now requires the **Blaze** (pay-as-you-go, still free at this scale) plan before Storage can be created on a new project. Skip this and people simply keep their Google photo. If you do enable it: **Build → Storage → Get started** → defaults → **Done**, then its **Rules** tab → paste [`cloud/storage.rules`](cloud/storage.rules) → **Publish**, and fill `storageBucket` in the config. Leave `storageBucket` empty otherwise.
 
 ## 4. Copy the config into Cadence
 

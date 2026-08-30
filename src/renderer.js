@@ -54,6 +54,10 @@ const state = {
     friendsData: null,
     updater: null,              // host: the room picks the next song (lives in the session)
 
+    // Contrast: dark lyrics over bright windows ('auto' follows the screen)
+    contrast: 'auto',             // 'auto' | 'light' | 'dark'
+    contrastStatus: null,         // { auto, background, permission } from the main process
+
     // Auto-hide when paused
     autoHideMin: 0,               // 0 = off
     autoHidden: false,
@@ -298,6 +302,8 @@ function setupEventListeners() {
                 setPlayerSource(styleValue);
             } else if (styleType === 'autohide') {
                 setAutoHide(Number(styleValue));
+            } else if (styleType === 'contrast') {
+                setContrast(styleValue);
             }
 
             // Update active state
@@ -576,6 +582,11 @@ function setupEventListeners() {
         if (on) updateAmbient();
     });
 
+    // Contrast (Auto): the main process reports what's behind the overlay
+    window.electronAPI.onContrastMode((background, status) => {
+        applyContrastStatus(status || { background });
+    });
+
     // Close settings when clicking outside
     document.addEventListener('click', (e) => {
         if (!elements.settingsMenu.contains(e.target) &&
@@ -684,6 +695,39 @@ function setAutoHidden(on) {
     if (state.autoHidden === on) return;
     state.autoHidden = on;
     elements.body.classList.toggle('auto-hidden', on);
+}
+
+// ============================================================================
+// CONTRAST (dark lyrics with a light halo over bright backgrounds)
+// ============================================================================
+const CONTRAST_PERMISSION_HINT = 'For true auto-contrast, allow Screen Recording for Cadence in System Settings → Privacy & Security → Screen Recording';
+
+function setContrast(mode, save = true) {
+    state.contrast = ['auto', 'light', 'dark'].includes(mode) ? mode : 'auto';
+    if (state.contrast !== 'auto') elements.body.classList.toggle('on-light', state.contrast === 'light');
+    updateActiveStyleButtons();
+    renderContrastHint();
+    // Only Auto runs the screen sampler in the main process; its first
+    // reading comes back with the status
+    window.electronAPI.setContrastMode(state.contrast).then(applyContrastStatus).catch(() => {});
+    if (save) savePreferences();
+}
+
+function applyContrastStatus(status) {
+    if (!status) return;
+    state.contrastStatus = status;
+    if (state.contrast === 'auto' && status.background) {
+        elements.body.classList.toggle('on-light', status.background === 'light');
+    }
+    renderContrastHint();
+}
+
+function renderContrastHint() {
+    const hint = document.getElementById('contrast-hint');
+    if (!hint) return;
+    if (state.contrast !== 'auto') hint.textContent = '';
+    else if (state.contrastStatus && state.contrastStatus.permission === false) hint.textContent = CONTRAST_PERMISSION_HINT;
+    else hint.textContent = 'Lyrics turn dark over bright windows and light over dark ones.';
 }
 
 // While hidden, the overlay shows itself when the cursor is over it or a
@@ -967,7 +1011,8 @@ function updateActiveStyleButtons() {
         layout: state.layoutMode,
         scale: state.scaleMode,
         source: state.playerSource,
-        autohide: String(state.autoHideMin)
+        autohide: String(state.autoHideMin),
+        contrast: state.contrast
     };
 
     elements.styleBtns.forEach(btn => {
@@ -976,10 +1021,12 @@ function updateActiveStyleButtons() {
 }
 
 function loadPreferences() {
+    let contrast = 'auto';
     try {
         const saved = localStorage.getItem('lyricsOverlayPrefs');
         if (saved) {
             const prefs = JSON.parse(saved);
+            if (typeof prefs.contrast === 'string') contrast = prefs.contrast;
             if (prefs.lyricStyle) setLyricStyle(prefs.lyricStyle);
             if (prefs.visualizerStyle) setVisualizerStyle(prefs.visualizerStyle);
             if (prefs.layoutMode) setLayoutMode(prefs.layoutMode);
@@ -1001,6 +1048,8 @@ function loadPreferences() {
     } catch (e) {
         console.log('No saved preferences found');
     }
+    // Defaults to Auto — this also starts (or leaves off) the screen sampler
+    setContrast(contrast, false);
 }
 
 function savePreferences() {
@@ -1015,6 +1064,7 @@ function savePreferences() {
         scaleMode: state.scaleMode,
         scaleFactor: state.scaleFactor,
         autoHideMin: state.autoHideMin,
+        contrast: state.contrast,
         lyricBrightness: state.lyricBrightness,
         tiltOn: state.tiltOn,
         vinylOn: state.vinylOn,
@@ -2786,6 +2836,7 @@ function setupCloudUI() {
     document.getElementById('acct-signout').addEventListener('click', () => api.signOut().then(renderCloud));
     document.getElementById('acct-avatar').addEventListener('click', async () => {
         const st = document.getElementById('acct-status');
+        if (state.cloud && !state.cloud.canUpload) { st.textContent = 'Picture uploads aren\'t switched on yet — your Google photo is used.'; return; }
         st.textContent = 'Uploading…';
         const r = await api.pickAvatar();
         st.textContent = r && r.success ? 'Picture updated' : (r && r.cancelled ? '' : (r && r.error) || 'Could not upload');
@@ -2895,6 +2946,9 @@ function renderCloud(status) {
         img.hidden = true;
         img.removeAttribute('src');
     }
+    const avatarBtn = document.getElementById('acct-avatar');
+    avatarBtn.classList.toggle('static', !status.canUpload);
+    avatarBtn.title = status.canUpload ? 'Change picture' : 'Your Google photo';
     if (status.error) document.getElementById('acct-status').textContent = status.error;
     if (!elements.settingsMenu.classList.contains('hidden')) refreshFriends();
 }

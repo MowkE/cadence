@@ -9,7 +9,7 @@
  * - Tray icon (the only way to quit on Windows), cadence:// deep links
  */
 
-const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard, globalShortcut, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerMonitor, shell, Tray, Menu, nativeImage, clipboard, globalShortcut, dialog, desktopCapturer, nativeTheme, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -533,6 +533,136 @@ function setNotchLayout(on) {
 }
 
 ipcMain.handle('notch-layout', (event, on) => setNotchLayout(on));
+
+// ============================================================================
+// AUTO CONTRAST (dark lyrics over bright windows, light ones over dark)
+// ============================================================================
+// While the renderer's Contrast setting is Auto, grab a tiny thumbnail of
+// the display the overlay sits on every few seconds and average the
+// luminance under the window. Hysteresis keeps it from flickering at the
+// threshold. macOS needs Screen Recording permission for this; without it
+// (or whenever a capture fails) the system light/dark appearance stands in
+// and the renderer shows a hint pointing at the setting.
+const CONTRAST_INTERVAL_MS = 4000;
+const CONTRAST_LIGHT_ABOVE = 0.62;   // mean luminance → 'light' background
+const CONTRAST_DARK_BELOW = 0.45;    // → 'dark'
+const CONTRAST_THUMB = { width: 160, height: 100 };
+let contrastAuto = false;
+let contrastTimer = null;
+let contrastSampling = false;
+let contrastBackground = 'dark';     // what's behind the overlay right now
+let contrastPermission = true;       // false = capture unavailable, using the theme
+
+function contrastStatus() {
+    return { auto: contrastAuto, background: contrastBackground, permission: contrastPermission };
+}
+
+function sendContrast() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('contrast-mode', contrastBackground, contrastStatus());
+    }
+}
+
+// 'granted' | 'not-determined' | 'denied' | 'restricted' (macOS only)
+function screenCaptureAccess() {
+    if (process.platform !== 'darwin') return 'granted';
+    try {
+        return systemPreferences.getMediaAccessStatus('screen');
+    } catch (e) {
+        return 'granted'; // older Electron: just try the capture
+    }
+}
+
+// Mean luminance (0–1) of the screen under the overlay, or null when there
+// is nothing usable to read (no permission → a blank thumbnail)
+async function captureContrastLuminance() {
+    const bounds = mainWindow.getBounds();
+    const display = screen.getDisplayMatching(bounds);
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: CONTRAST_THUMB });
+    if (!sources || !sources.length) return null;
+    const source = sources.find(s => String(s.display_id) === String(display.id)) || sources[0];
+    const image = source.thumbnail;
+    if (!image || image.isEmpty()) return null;
+    const size = image.getSize();
+    const bitmap = image.toBitmap(); // BGRA
+    if (!bitmap || bitmap.length < size.width * size.height * 4) return null;
+
+    // Window bounds → thumbnail pixels (the thumbnail covers the whole display)
+    const sx = size.width / display.bounds.width;
+    const sy = size.height / display.bounds.height;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const x0 = clamp(Math.floor((bounds.x - display.bounds.x) * sx), 0, size.width - 1);
+    const y0 = clamp(Math.floor((bounds.y - display.bounds.y) * sy), 0, size.height - 1);
+    const x1 = clamp(Math.ceil((bounds.x + bounds.width - display.bounds.x) * sx), x0 + 1, size.width);
+    const y1 = clamp(Math.ceil((bounds.y + bounds.height - display.bounds.y) * sy), y0 + 1, size.height);
+
+    let sum = 0;
+    let count = 0;
+    let anyAlpha = false;
+    for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+            const i = (y * size.width + x) * 4;
+            sum += 0.2126 * bitmap[i + 2] + 0.7152 * bitmap[i + 1] + 0.0722 * bitmap[i];
+            if (bitmap[i + 3]) anyAlpha = true;
+            count++;
+        }
+    }
+    if (!count || !anyAlpha) return null; // fully transparent = nothing captured
+    return sum / (count * 255);
+}
+
+async function sampleContrast() {
+    if (contrastSampling || !contrastAuto) return;
+    if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+    contrastSampling = true;
+    const before = contrastBackground;
+    const permissionBefore = contrastPermission;
+    try {
+        const access = screenCaptureAccess();
+        let luminance = null;
+        // 'not-determined' still asks: the first capture is what makes macOS
+        // offer the permission. Denied means don't keep knocking.
+        if (access === 'granted' || access === 'not-determined') {
+            try {
+                luminance = await captureContrastLuminance();
+            } catch (e) {
+                luminance = null;
+            }
+            // Without permission macOS hands back an all-black thumbnail
+            if (luminance === 0 && access !== 'granted') luminance = null;
+        }
+        if (luminance === null) {
+            contrastPermission = access === 'granted';
+            contrastBackground = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+        } else {
+            contrastPermission = true;
+            if (luminance > CONTRAST_LIGHT_ABOVE) contrastBackground = 'light';
+            else if (luminance < CONTRAST_DARK_BELOW) contrastBackground = 'dark';
+        }
+    } catch (e) {
+        contrastBackground = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+    } finally {
+        contrastSampling = false;
+    }
+    if (contrastBackground !== before || contrastPermission !== permissionBefore) sendContrast();
+}
+
+// The renderer picks 'auto' | 'light' | 'dark'; only Auto runs the sampler.
+// Resolves once the first sample is in so the caller can apply it at once.
+async function setContrastMode(mode) {
+    contrastAuto = mode === 'auto';
+    if (contrastTimer) {
+        clearInterval(contrastTimer);
+        contrastTimer = null;
+    }
+    if (contrastAuto) {
+        await sampleContrast();
+        contrastTimer = setInterval(sampleContrast, CONTRAST_INTERVAL_MS);
+    }
+    return contrastStatus();
+}
+
+ipcMain.handle('set-contrast-mode', (event, mode) => setContrastMode(String(mode || 'auto')));
 
 function createWindow() {
     const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;

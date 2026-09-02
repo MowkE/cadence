@@ -13,7 +13,7 @@
   &nbsp;
   <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-win-x64-Setup.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-1ed760?style=for-the-badge&logo=windows&logoColor=white"></a>
   &nbsp;
-  <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-linux-x64.AppImage"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-1ed760?style=for-the-badge&logo=linux&logoColor=white"></a>
+  <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-linux-x86_64.AppImage"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-1ed760?style=for-the-badge&logo=linux&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -45,7 +45,7 @@ No terminal, no Python, no editor. Grab the installer for your machine:
 | **Mac — Apple Silicon** (M1/M2/M3/M4) | [Cadence-mac-arm64.dmg](https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-arm64.dmg) | Open the DMG, drag Cadence to Applications |
 | **Mac — Intel** | [Cadence-mac-x64.dmg](https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-x64.dmg) | Open the DMG, drag Cadence to Applications |
 | **Windows** (64-bit) | [Cadence-win-x64-Setup.exe](https://github.com/MowkE/cadence/releases/latest/download/Cadence-win-x64-Setup.exe) | Run it — installs in a few seconds, no admin needed |
-| **Linux** (64-bit) | [Cadence-linux-x64.AppImage](https://github.com/MowkE/cadence/releases/latest/download/Cadence-linux-x64.AppImage) | `chmod +x` it and run — no install |
+| **Linux** (64-bit) | [Cadence-linux-x86_64.AppImage](https://github.com/MowkE/cadence/releases/latest/download/Cadence-linux-x86_64.AppImage) | `chmod +x` it and run — no install |
 
 All versions live on the [Releases page](https://github.com/MowkE/cadence/releases).
 
@@ -53,7 +53,7 @@ All versions live on the [Releases page](https://github.com/MowkE/cadence/releas
 >
 > - **Mac:** the first open says Apple can't verify it. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and press **Open Anyway** (once). If you'd rather use Terminal: `xattr -cr /Applications/Cadence.app`.
 > - **Windows:** SmartScreen shows "Windows protected your PC". Click **More info → Run anyway** (once).
-> - **Linux:** no warnings — just `chmod +x Cadence-linux-x64.AppImage` and run it. If it complains about FUSE, install `libfuse2` (Ubuntu: `sudo apt install libfuse2`).
+> - **Linux:** no warnings — just `chmod +x Cadence-linux-x86_64.AppImage` and run it. If it complains about FUSE, install `libfuse2` (Ubuntu: `sudo apt install libfuse2`).
 
 Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** — that's where *Show / Hide / Settings / Quit* are. On Windows it also keeps a **taskbar button**, and if the overlay ever gets dragged off the screen it snaps itself back — or use **Bring overlay back** in the tray menu.
 

@@ -4,7 +4,7 @@
 
 <h1 align="center">Cadence</h1>
 
-<p align="center">A floating, click-through desktop overlay for Spotify and YTmusic — synced karaoke lyrics, an audio-reactive visualizer, album-adaptive theming, a 3D tilt with holographic frames, and a pile of toggleable effects. Now with <b>listen along</b>: share a link and your friends see your lyrics live. Mac + Windows.</p>
+<p align="center">A floating, click-through desktop overlay for Spotify and YTmusic — synced karaoke lyrics, an audio-reactive visualizer, album-adaptive theming, a 3D tilt with holographic frames, and a pile of toggleable effects. Now with <b>listen along</b>: share a link and your friends see your lyrics live. Mac, Windows + Linux.</p>
 
 <p align="center">
   <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-arm64.dmg"><img alt="Download for Mac (Apple Silicon)" src="https://img.shields.io/badge/Download-Mac%20%28Apple%20Silicon%29-1ed760?style=for-the-badge&logo=apple&logoColor=white"></a>
@@ -12,6 +12,8 @@
   <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-x64.dmg"><img alt="Download for Mac (Intel)" src="https://img.shields.io/badge/Download-Mac%20%28Intel%29-1ed760?style=for-the-badge&logo=apple&logoColor=white"></a>
   &nbsp;
   <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-win-x64-Setup.exe"><img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows-1ed760?style=for-the-badge&logo=windows&logoColor=white"></a>
+  &nbsp;
+  <a href="https://github.com/MowkE/cadence/releases/latest/download/Cadence-linux-x64.AppImage"><img alt="Download for Linux" src="https://img.shields.io/badge/Download-Linux-1ed760?style=for-the-badge&logo=linux&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -43,6 +45,7 @@ No terminal, no Python, no editor. Grab the installer for your machine:
 | **Mac — Apple Silicon** (M1/M2/M3/M4) | [Cadence-mac-arm64.dmg](https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-arm64.dmg) | Open the DMG, drag Cadence to Applications |
 | **Mac — Intel** | [Cadence-mac-x64.dmg](https://github.com/MowkE/cadence/releases/latest/download/Cadence-mac-x64.dmg) | Open the DMG, drag Cadence to Applications |
 | **Windows** (64-bit) | [Cadence-win-x64-Setup.exe](https://github.com/MowkE/cadence/releases/latest/download/Cadence-win-x64-Setup.exe) | Run it — installs in a few seconds, no admin needed |
+| **Linux** (64-bit) | [Cadence-linux-x64.AppImage](https://github.com/MowkE/cadence/releases/latest/download/Cadence-linux-x64.AppImage) | `chmod +x` it and run — no install |
 
 All versions live on the [Releases page](https://github.com/MowkE/cadence/releases).
 
@@ -50,8 +53,9 @@ All versions live on the [Releases page](https://github.com/MowkE/cadence/releas
 >
 > - **Mac:** the first open says Apple can't verify it. Click **Done**, then go to **System Settings → Privacy & Security**, scroll down and press **Open Anyway** (once). If you'd rather use Terminal: `xattr -cr /Applications/Cadence.app`.
 > - **Windows:** SmartScreen shows "Windows protected your PC". Click **More info → Run anyway** (once).
+> - **Linux:** no warnings — just `chmod +x Cadence-linux-x64.AppImage` and run it. If it complains about FUSE, install `libfuse2` (Ubuntu: `sudo apt install libfuse2`).
 
-Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's where *Show / Hide / Settings / Quit* are.
+Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** — that's where *Show / Hide / Settings / Quit* are. On Windows it also keeps a **taskbar button**, and if the overlay ever gets dragged off the screen it snaps itself back — or use **Bring overlay back** in the tray menu.
 
 ## Features
 
@@ -67,7 +71,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows)** — that's 
 - **Playback controls** on hover, plus **ring scrubbing**: drag the progress arc around the album art to seek
 - **Layouts**: full, focus (3-line), mini ticker bar, and **Notch** — just the current line, pinned to the top-centre of the screen under the camera notch, nothing else
 - **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, daily listening recap, ambient screensaver mode when idle
-- **Mac and Windows**, one codebase, no Python or extra installs
+- **Mac, Windows and Linux**, one codebase, no Python or extra installs
 
 ## Setup: there isn't any
 
@@ -75,6 +79,7 @@ Cadence reads what's playing straight from the Spotify desktop app on your compu
 
 - **Mac:** the first time, macOS asks whether Cadence may control Spotify — click **Allow**. (Changed your mind later? System Settings → Privacy & Security → Automation.)
 - **Windows:** nothing to approve. Cadence listens to the system media session Spotify already reports to — the same thing the volume flyout shows. Album art comes from a free iTunes/Deezer lookup, so it can occasionally differ from Spotify's.
+- **Linux:** nothing to approve either. Cadence reads the MPRIS bus every desktop player announces itself on — the Spotify app works out of the box, controls included. (Needs a systemd desktop, i.e. almost every distro; the overlay's transparency needs a compositor, which GNOME and KDE have by default.)
 
 Free accounts get everything: lyrics, visuals, and the play/pause/skip/seek controls in the overlay.
 
@@ -84,6 +89,7 @@ Cadence works with YouTube Music too — pick **YouTube Music** under gear → *
 
 - **Mac:** Cadence reads the YouTube Music tab in your browser — Chrome, Brave, Edge, Arc, Vivaldi or Safari. The browser has to allow it once: in Chrome-style browsers, **View → Developer → Allow JavaScript from Apple Events**; in Safari, **Develop → Allow JavaScript from Apple Events** (turn on the Develop menu in Settings → Advanced). The first time Cadence spots a YouTube Music tab it can't read, a card in the overlay walks you through it step by step and closes itself once it connects. You get lyrics, art, exact timing and the play/pause/skip/seek controls.
 - **Windows:** nothing to set up — the browser (or the YouTube Music desktop app) already reports to the system media session Cadence listens to.
+- **Linux:** nothing to set up — Chromium and Firefox announce the YouTube Music tab over MPRIS and Cadence picks it up, controls included.
 
 Listen-along guests can follow a YouTube Music host's lyrics, but *playing along* and the room vote need a Spotify host, since requests are Spotify links.
 

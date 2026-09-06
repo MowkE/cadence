@@ -69,7 +69,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** —
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
 - **Hologram projector** mode — a lens at the bottom of the screen projects the overlay; click it to power the hologram down/up
 - **Playback controls** on hover, plus **ring scrubbing**: drag the progress arc around the album art to seek
-- **Layouts**: full, focus (3-line), mini ticker bar, and **Notch** — just the current line, pinned to the top-centre of the screen under the camera notch, nothing else
+- **Layouts**: full, focus (3-line), mini ticker bar, and **Notch** — just the current line, pinned to the top-centre of the screen under the camera notch, nothing else; plus a **Lyrics only** switch that hides the album art, ring and visualizer in any layout
 - **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, daily listening recap, ambient screensaver mode when idle
 - **Mac, Windows and Linux**, one codebase, no Python or extra installs
 
@@ -90,6 +90,8 @@ Cadence works with YouTube Music too — pick **YouTube Music** under gear → *
 - **Mac:** Cadence reads the YouTube Music tab in your browser — Chrome, Brave, Edge, Arc, Vivaldi or Safari. The browser has to allow it once: in Chrome-style browsers, **View → Developer → Allow JavaScript from Apple Events**; in Safari, **Develop → Allow JavaScript from Apple Events** (turn on the Develop menu in Settings → Advanced). The first time Cadence spots a YouTube Music tab it can't read, a card in the overlay walks you through it step by step and closes itself once it connects. You get lyrics, art, exact timing and the play/pause/skip/seek controls.
 - **Windows:** nothing to set up — the browser (or the YouTube Music desktop app) already reports to the system media session Cadence listens to.
 - **Linux:** nothing to set up — Chromium and Firefox announce the YouTube Music tab over MPRIS and Cadence picks it up, controls included.
+
+**Using Pear Desktop** (the YouTube Music desktop app, formerly *youtube-music*)? Turn on its **API Server** plugin (Settings → Plugins → API Server), and the first time Cadence asks, click **Allow** in the Pear Desktop window. From then on Cadence reads the song, timing and controls straight from Pear — on Mac, Windows and Linux alike, no browser needed. Pear's own Synced Lyrics plugin can stay on; Cadence draws its lyrics from the same source, just floating over everything.
 
 Listen-along guests can follow a YouTube Music host's lyrics, but *playing along* and the room vote need a Spotify host, since requests are Spotify links.
 

@@ -63,6 +63,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** —
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
 - **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
 - **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, beat tap, type the line; solo or with your session
+- **Remix Studio** — press ✳ Remix on the overlay to drag the artwork, lyrics and label anywhere, pick a material (rain glass, liquid chrome, ink & paper, departure board), set the overlay's presence behavior, and save or share your look as an Edition — with Studio Ghibli–esque scenes
 - **Shortcuts and auto-hide** — global hotkeys to show/hide the overlay, and fade-out after N minutes of silence
 - **Three lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI

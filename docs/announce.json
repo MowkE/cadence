@@ -1,7 +1,7 @@
 {
-  "id": "2026-09-341-windows",
-  "minVersion": "3.3.0",
-  "title": "Windows update",
-  "body": "Windows optimizations and bug fixes.\n\nCadence updates itself — nothing to do on your end.",
-  "cta": null
+  "id": "2026-09-discord",
+  "minVersion": "3.4.3",
+  "title": "Come hang in the Discord",
+  "body": "Cadence has a Discord now — song requests, listen-along rooms, feature ideas, and first dibs on whatever ships next.\n\nThere's also a Join the Discord button under Social in settings whenever you want it.",
+  "cta": { "label": "Join the Discord", "action": "url", "url": "https://discord.gg/w3GWuF3Psm" }
 }

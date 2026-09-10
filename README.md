@@ -176,6 +176,10 @@ Press **Esc** to leave a game or close the panel.
 - Menu bar / tray icon: show, hide, open settings, copy the invite link while hosting, quit
 
 
+## Community
+
+Come hang in the Discord — requests, listen-along rooms, and whatever's next: **[discord.gg/w3GWuF3Psm](https://discord.gg/w3GWuF3Psm)**
+
 ## License
 
 MIT

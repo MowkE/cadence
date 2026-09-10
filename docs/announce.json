@@ -1,7 +1,7 @@
 {
-  "id": "2026-09-300-downloads-remix-v2",
+  "id": "2026-09-341-windows",
   "minVersion": "3.3.0",
-  "title": "300 download special!!",
-  "body": "Listen along with your friends completely works now — and it works for large groups too.\n\nNew: the Remix feature, with really cool Studio Ghibli–esque scenes. Press ✳ Remix on the overlay to drag, restyle and make Cadence yours.",
-  "cta": { "label": "Open Remix", "action": "remix" }
+  "title": "Windows update",
+  "body": "Windows optimizations and bug fixes.\n\nCadence updates itself — nothing to do on your end.",
+  "cta": null
 }

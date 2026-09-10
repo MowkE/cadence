@@ -62,7 +62,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** —
 - **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed. **YouTube Music** works too, straight from the browser tab
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
 - **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
-- **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, beat tap, type the line; solo or with your session
+- **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, lyric liar, hot mic; solo or with your session
 - **Remix Studio** — press ✳ Remix on the overlay to drag the artwork, lyrics and label anywhere, pick a material (rain glass, liquid chrome, ink & paper, departure board), set the overlay's presence behavior, and save or share your look as an Edition — with Studio Ghibli–esque scenes, ten silly 8-bit playgrounds (capybara spa, toast train, tiny kaiju…) and pixel weather
 - **Shortcuts and auto-hide** — global hotkeys to show/hide the overlay, and fade-out after N minutes of silence
 - **Four lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter), and **Minimal** (the clean Spotify / Musixmatch look: one bold sans, no glow) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
@@ -159,7 +159,6 @@ Gear → **🎤 Open Karaoke & games**. A setlist of room games that run on the 
 | **Hot mic** | friends | Every line is dealt to someone in the room, the chorus to everyone. Your name shows a line ahead, so you can see yours coming. |
 | **Lyric liar** | friends | A line a little way ahead is hidden from everyone's lyrics. Each person writes a fake version, then the room votes on which is real. 3 points for spotting the real one, 2 for every vote your fake takes. Rounds are timed off the song itself. |
 | **Finish the line** | friends | The last words of an upcoming line vanish from everyone's lyrics. Type them before the line plays — fastest correct answer wins it, everyone else who's right still scores. |
-| **Beat tap** | solo | Every lyric line is a note sliding toward the bar — hit space (or click) as it lands. Perfect / Good / OK, combos, accuracy. |
 
 Press **Esc** to leave a game or close the panel.
 
@@ -174,7 +173,6 @@ Press **Esc** to leave a game or close the panel.
 - Hover the album art for playback controls; with Progress arc enabled, drag the ring around the art to scrub through the song
 - Play music and go idle for a minute — Cadence becomes a full-screen ambient lyric display until you touch the mouse or keyboard
 - Menu bar / tray icon: show, hide, open settings, copy the invite link while hosting, quit
-
 
 ## Community
 

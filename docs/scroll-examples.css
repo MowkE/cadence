@@ -1,0 +1,206 @@
+/* The examples retain normal document flow until a large enough viewport can fit a chapter. */
+.example-inner{position:relative}
+.example-intro,.example-track,.example-outro{display:contents}
+.example-scroll-rail{display:flex;align-items:center;gap:24px;margin-top:26px;padding-top:14px;border-top:1px solid #bdc7ad;font:7px/1.5 var(--mono);letter-spacing:.035em;color:#6f785f}
+.example-scroll-hint{white-space:nowrap}
+.example-scroll-ticks{display:flex;gap:7px;flex:1;max-width:270px}
+.example-scroll-ticks>i{display:block;flex:1;height:2px;background:#bec7b055;overflow:hidden;position:relative}
+.example-scroll-ticks>i>b{display:block;width:100%;height:100%;background:#5e7244;transform:scaleX(0);transform-origin:left center}
+.example-scroll-ticks>i.is-current{background:#87986a66}
+.example-scroll-caption{margin-left:auto;text-align:right;font-size:7px;min-width:170px}
+.example-scroll .world-stage>img{transform:scale(var(--example-image-scale,1.045)) translateY(var(--example-image-drift,0px));transition:none}
+.example-scroll .world-stage>.example-previous-world{position:absolute;inset:0;opacity:0;pointer-events:none}
+.example-scroll .world-lyric{transform:translateY(var(--example-lyric-rise,0px))}
+.example-lyric-word{display:inline-block}
+.example-scroll .world-progress i{width:100%;transform-origin:left;transform:scaleX(calc(.08 + var(--example-local-progress,0) * .92))}
+.example-scroll .social-window{transform:translateY(var(--example-card-rise,0px)) rotate(var(--example-card-tilt,3deg));transition:none}
+.example-scroll .social-window:focus-within{transform:translateY(var(--example-card-rise,0px)) rotate(0deg)}
+.example-scroll .social-sticky-note{transform:rotate(var(--example-note-tilt,-7deg))}
+.example-chat-piece{transform-origin:center center}
+.example-scroll--still .example-lyric-word,.example-scroll--still .example-chat-piece{transform:none!important;opacity:1!important}
+.example-scroll--still .world-lyric,.example-scroll--still .social-window{transform:none}
+.example-scroll--still .world-stage>img{transform:none}
+.example-scroll--still .world-progress i{transform:scaleX(.45)}
+.example-scroll--still .example-scroll-ticks>i>b{transition:none}
+/* A single thumbnail strip expands to eight across when space allows. */
+.example-scroll .world-selector{display:flex;min-width:0;max-width:100%;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scroll-padding-inline:5px;overscroll-behavior-x:contain;padding:4px 0 7px;scrollbar-width:thin;scrollbar-color:#8b9972 #c4ccb63b}
+.example-scroll .world-selector button{flex:1 0 145px;min-width:145px;scroll-snap-align:start}
+.example-scroll .world-selector button:focus-visible{outline-offset:-2px}
+.example-scroll .world-selector button>span{min-width:0}
+.example-scroll .world-selector img{flex-shrink:0}
+.example-scroll .world-selector b,.example-scroll .world-selector small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.example-scroll .world-selector i{display:none}
+.example-scroll .world-selector::-webkit-scrollbar{height:5px}
+.example-scroll .world-selector::-webkit-scrollbar-thumb{background:#8b9972;border-radius:4px}
+.example-scroll .world-selector::-webkit-scrollbar-track{background:#c4ccb63b}
+/* The introduction and details scroll normally; the product gets the stage. */
+@media(min-width:900px) and (min-height:740px){
+  .example-scroll--pinned.remix-section,.example-scroll--pinned.together-section{padding:0;height:auto}
+  .example-scroll--pinned>.example-intro{display:block;padding:64px var(--pad) 28px}
+  .example-scroll--pinned>.example-intro>.section-heading{margin-bottom:40px}
+  .example-scroll--pinned .remix-heading{margin:0;gap:45px}
+  .example-scroll--pinned .remix-heading h2{font-size:clamp(48px,5.4vw,86px)}
+  .example-scroll--pinned .remix-heading p{max-width:325px;font-size:12px;line-height:1.9}
+  .example-scroll--pinned>.example-track{display:block;height:calc(100svh * (var(--example-chapter-count,4) + 1));position:relative}
+  .example-scroll--pinned.together-section>.example-track{height:440svh}
+  .example-scroll--pinned>.example-track>.example-inner{position:sticky;top:0;height:100svh;padding:28px var(--stage-pad);display:grid;align-content:center;row-gap:18px}
+  .example-scroll--pinned.remix-section>.example-track>.example-inner{display:block;padding:12px var(--stage-pad)}
+  .example-scroll--pinned .world-stage{height:auto;min-height:0;margin:0}
+  .example-scroll--pinned .world-label{left:30px;top:26px;font-size:8px}
+  .example-scroll--pinned .world-number{right:30px;top:25px;font-size:15px}
+  .example-scroll--pinned .world-lyric p{font-size:clamp(54px,7vw,112px);line-height:1.02;letter-spacing:-.045em}
+  .example-scroll--pinned .world-lyric>span{font-size:9px;margin-bottom:24px;letter-spacing:.07em}
+  .example-scroll--pinned .world-progress{width:190px;margin-top:30px}
+  .example-scroll--pinned .world-bottom{left:30px;right:30px;bottom:26px;font-size:12px}
+  .example-scroll--pinned .glass-button{font-size:9px;padding:13px 16px}
+  .example-scroll--pinned .world-selector{margin:0;gap:14px}
+  .example-scroll--pinned .world-selector button{padding-bottom:11px;gap:13px}
+  .example-scroll--pinned .world-selector img{width:62px;height:50px}
+  .example-scroll--pinned .world-selector b{font-size:12px}
+  .example-scroll--pinned .world-selector small{font-size:6px;margin-top:7px}
+  .example-scroll--pinned .example-scroll-rail{margin:0;padding-top:12px;gap:24px;font-size:8px}
+  .example-scroll--pinned .example-scroll-caption{font-size:8px}
+  .example-scroll--pinned .example-scroll-ticks{max-width:370px}
+  .example-scroll--pinned>.example-outro{display:block;padding:18px var(--pad) 65px}
+  .example-scroll--pinned .remix-footer{margin:0;font-size:10px}
+  .example-scroll--pinned .pill-note{font-size:7px;padding:9px 12px}
+  .example-scroll--pinned.together-section>.example-intro{padding-bottom:0}
+  .example-scroll--pinned.together-section>.example-intro>.section-heading{margin-bottom:0}
+  .example-scroll--pinned.together-section>.example-track>.example-inner{grid-template-rows:minmax(0,1fr) auto;row-gap:20px}
+  .example-scroll--pinned .together-grid{height:100%;min-height:0;grid-template-columns:minmax(260px,.75fr) minmax(0,1.4fr);gap:4%;align-items:center}
+  .example-scroll--pinned .together-copy h2{font-size:clamp(43px,4.7vw,76px)}
+  .example-scroll--pinned .together-copy p{font-size:13px;line-height:1.9;margin-top:25px;max-width:370px}
+  .example-scroll--pinned .social-tabs{margin-top:30px;max-width:370px}
+  .example-scroll--pinned .social-tabs button{font-size:13px;padding:17px 0}
+  .example-scroll--pinned .together-copy>.fine-print{font-size:7px;margin-top:23px}
+  .example-scroll--pinned .social-stage{margin:0;padding:14px 12px 32px;min-width:0}
+  .example-scroll--pinned .social-window{width:100%;max-width:650px}
+  .example-scroll--pinned .social-window-top{height:49px;padding:0 23px}
+  .example-scroll--pinned .social-peer{padding:17px 25px}
+  .example-scroll--pinned .social-view{min-height:clamp(390px,48svh,462px);padding:25px 26px 22px}
+  .example-scroll--pinned .chat-date{font-size:8px;margin-bottom:23px}
+  .example-scroll--pinned .chat-bubble{font-size:12px;padding:12px 14px;margin-bottom:14px}
+  .example-scroll--pinned .song-postcard{margin-bottom:18px;padding:12px}
+  .example-scroll--pinned .postcard-cover{width:90px;height:106px}
+  .example-scroll--pinned .postcard-cover>span{font-size:72px}
+  .example-scroll--pinned .song-postcard>div:last-child{padding:9px 0}
+  .example-scroll--pinned .song-postcard h3{font-size:27px}
+  .example-scroll--pinned .song-postcard p{font-size:10px}
+  .example-scroll--pinned .reaction-row{margin:18px 0 22px}
+  .example-scroll--pinned .reaction-row>span{font-size:7px}
+  .example-scroll--pinned #demo-chat{padding-top:14px}
+  .example-scroll--pinned #chat-message{font-size:11px}
+  .example-scroll--pinned .social-sticky-note{bottom:4px;left:-22px;font-size:21px;padding:21px 24px}
+  .example-scroll--pinned .social-sticky-note span{font-size:8px;margin-top:10px}
+  .example-scroll--pinned .timeline-title{font-size:38px;margin-bottom:31px}
+  .example-scroll--pinned .friend-timeline li{margin-bottom:31px}
+  .example-scroll--pinned .friend-timeline h3{font-size:24px}
+  .example-scroll--pinned .friend-timeline p{font-size:11px}
+  .example-scroll--pinned .mini-recap{padding:23px 25px}
+  .example-scroll--pinned .mini-recap h3{font-size:58px;margin:23px 0 10px}
+  .example-scroll--pinned .recap-columns{margin-top:24px;padding-top:13px}
+  .example-scroll--pinned .recap-columns ol{font-size:9px;margin-bottom:8px}
+  .example-scroll--pinned .recap-columns li{padding-bottom:9px}
+  .example-scroll--pinned .recap-columns li>span{font-size:7px}
+  .example-scroll--pinned .together-bottom{margin:0;gap:40px;padding-top:25px}
+  .example-scroll--pinned .together-bottom h3{font-size:15px}
+  .example-scroll--pinned .together-bottom p{font-size:11px;line-height:1.7;margin-top:8px}
+}
+@media(min-width:900px) and (min-height:740px) and (max-height:899px){
+  .example-scroll--pinned>.example-track>.example-inner{padding-top:22px;padding-bottom:22px;row-gap:14px}
+  .example-scroll--pinned .world-selector img{width:55px;height:43px}
+  .example-scroll--pinned .world-selector button{padding-bottom:9px}
+  .example-scroll--pinned .together-copy h2{font-size:clamp(43px,4.2vw,65px)}
+  .example-scroll--pinned .together-copy p{font-size:12px;margin-top:20px}
+  .example-scroll--pinned .social-tabs{margin-top:23px}
+  .example-scroll--pinned .social-tabs button{padding:14px 0}
+  /* At 740px the social row has 651px: 44px outer padding, a
+     25px rail, and a 20px gap. Chrome is 106px; the 410–440px
+     view plus 46px stage padding leaves room for the 32px entrance. */
+  .example-scroll--pinned .social-window-top{height:44px}
+  .example-scroll--pinned .social-peer{padding-top:12px;padding-bottom:12px}
+  .example-scroll--pinned .social-view{min-height:410px;padding:18px 23px 16px}
+  .example-scroll--pinned .chat-date{font-size:7px;line-height:1.4;margin-bottom:12px}
+  .example-scroll--pinned .chat-bubble{font-size:11px;line-height:1.55;padding:8px 12px;margin-bottom:8px}
+  .example-scroll--pinned .song-postcard{padding:9px;margin-bottom:12px}
+  .example-scroll--pinned .postcard-cover{width:76px;height:76px}
+  .example-scroll--pinned .postcard-cover>span{font:italic 58px/1 var(--serif);margin-top:0}
+  .example-scroll--pinned .song-postcard>div:last-child{padding:3px 0;font-size:9px;line-height:1.4}
+  .example-scroll--pinned .song-postcard small{font-size:6px;line-height:1.4}
+  .example-scroll--pinned .song-postcard h3{font-size:23px;line-height:1.05;margin:5px 0 2px}
+  .example-scroll--pinned .song-postcard p{font-size:9px;line-height:1.4}
+  .example-scroll--pinned .song-postcard>div:last-child>span{font-size:6px;line-height:1.4;margin-top:6px}
+  .example-scroll--pinned .reaction-row{margin:10px 0 12px}
+  .example-scroll--pinned #demo-chat{padding-top:10px}
+  .example-scroll--pinned .timeline-title{font-size:32px;line-height:1.1;margin-bottom:22px}
+  .example-scroll--pinned .timeline-title>span{line-height:1.4;margin-top:10px}
+  .example-scroll--pinned .friend-timeline li{font-size:11px;line-height:1.5;margin-bottom:22px}
+  .example-scroll--pinned .friend-timeline li:last-child{margin-bottom:0}
+  .example-scroll--pinned .friend-timeline h3{font-size:21px;line-height:1.1;margin:6px 0}
+  .example-scroll--pinned .friend-timeline p{font-size:10px;line-height:1.7}
+  .example-scroll--pinned .mini-recap{padding:18px 22px}
+  .example-scroll--pinned .mini-recap>span{display:block;font-size:7px;line-height:1.4}
+  .example-scroll--pinned .mini-recap h3{font-size:50px;line-height:.95;margin:14px 0 7px}
+  .example-scroll--pinned .mini-recap p{font-size:9px;line-height:1.6}
+  .example-scroll--pinned .recap-columns{margin-top:15px;padding-top:10px}
+  .example-scroll--pinned .recap-columns b{display:block;line-height:1.4}
+  .example-scroll--pinned .recap-columns ol{margin-top:8px;margin-bottom:5px}
+  .example-scroll--pinned .recap-columns li{line-height:1.5;padding-bottom:6px}
+  .example-scroll--pinned .recap-columns li>span{line-height:1.4}
+  .example-scroll--pinned .mini-recap-footer{padding-top:9px;line-height:1.5}
+  .example-scroll--pinned .recap-example-note{margin-top:8px;line-height:1.4}
+}
+@media(min-width:900px) and (max-width:1100px) and (min-height:740px){
+  .example-scroll--pinned .together-grid{grid-template-columns:minmax(260px,.75fr) minmax(0,1.4fr);gap:4%}
+  .example-scroll--pinned .social-stage{padding-left:0;padding-right:0}
+  .example-scroll--pinned .social-view{padding-left:18px;padding-right:18px}
+  .example-scroll--pinned .social-sticky-note{left:-12px;font-size:17px}
+  .example-scroll--pinned .reaction-row>span{font-size:6px}
+  .example-scroll--pinned .recap-columns{gap:10px}
+  .example-scroll--pinned .recap-columns ol{font-size:8px}
+}
+@media(max-width:899px){
+  .example-scroll-rail{gap:14px;flex-wrap:wrap;font-size:6px;margin-top:24px}
+  .example-scroll-caption{font-size:6px;min-width:0}
+  .example-scroll-ticks{max-width:none;order:3;flex-basis:100%;gap:8px}
+}
+@media(max-width:760px){
+  .example-scroll .social-window{transform:translateY(calc(var(--example-card-rise,0px) * .4)) rotate(calc(var(--example-card-tilt,3deg) * .5))}
+  .example-scroll .world-lyric{transform:translateY(calc(var(--example-lyric-rise,0px) * .5))}
+}
+@media(prefers-reduced-motion:reduce){
+  .example-scroll .world-stage>img,.example-scroll .world-lyric,.example-scroll .social-window,.example-lyric-word,.example-chat-piece{transform:none!important}
+  .example-lyric-word,.example-chat-piece{opacity:1!important}
+  .example-scroll .example-previous-world{display:none}
+}
+
+@media(min-width:1001px){
+  .example-scroll:not(.example-scroll--pinned) .together-grid{grid-template-columns:minmax(260px,.75fr) minmax(0,1.4fr);gap:4%}
+  .example-scroll:not(.example-scroll--pinned) .social-window{width:100%;max-width:650px}
+}
+
+/* Make the picture physically taller. Its controls sit over the scene instead
+   of consuming rows that reduce the image height inside the pinned viewport. */
+@media(min-width:900px) and (min-height:740px){
+  .example-scroll--pinned.remix-section>.example-track>.example-inner{padding-block:12px}
+  .example-scroll--pinned.remix-section .world-stage{height:calc(100svh - 24px);min-height:0;max-height:none}
+  .example-scroll--pinned.remix-section .world-lyric{padding-bottom:150px}
+  .example-scroll--pinned.remix-section .world-bottom{bottom:166px}
+  .example-scroll--pinned.remix-section>.example-track>.example-inner::after{content:'';position:absolute;z-index:1;left:calc(var(--stage-pad) + 12px);right:calc(var(--stage-pad) + 12px);bottom:24px;height:136px;background:#14211df5;border:1px solid #d7e8c62b;border-radius:5px;box-shadow:0 12px 36px #06100945;pointer-events:none}
+  .example-scroll--pinned.remix-section .world-selector{position:absolute;z-index:2;left:calc(var(--stage-pad) + 26px);right:calc(var(--stage-pad) + 26px);bottom:62px;margin:0;gap:14px;padding:4px 0 7px;scrollbar-color:#b3c591 #ffffff14}
+  .example-scroll--pinned.remix-section .world-selector button{color:#f1f4e8}
+  .example-scroll--pinned.remix-section .world-selector small{color:#b9c7ad}
+  .example-scroll--pinned.remix-section .world-selector button[aria-pressed="true"]{border-color:#d8ef58}
+  .example-scroll--pinned.remix-section .world-selector button:focus-visible{outline-color:#e4f69b}
+  .example-scroll--pinned.remix-section .world-selector::-webkit-scrollbar-thumb{background:#b3c591}
+  .example-scroll--pinned.remix-section .world-selector::-webkit-scrollbar-track{background:#ffffff14}
+  .example-scroll--pinned.remix-section .example-scroll-rail{position:absolute;z-index:2;left:calc(var(--stage-pad) + 26px);right:calc(var(--stage-pad) + 26px);bottom:34px;margin:0;padding-top:9px;border-color:#d7e8c62b;color:#cbd8bd}
+  .example-scroll--pinned.remix-section .example-scroll-ticks>i{background:#ffffff1c}
+  .example-scroll--pinned.remix-section .example-scroll-ticks>i.is-current{background:#e4f1bf45}
+  .example-scroll--pinned.remix-section .example-scroll-ticks>i>b{background:#d8ef58}
+}
+.example-scroll:not(.example-scroll--pinned) .world-stage{height:clamp(500px,80svh,1000px)}
+@media(max-height:624px){
+  .example-scroll:not(.example-scroll--pinned) .world-stage{height:clamp(340px,80svh,500px)}
+  .example-scroll:not(.example-scroll--pinned) .world-lyric{padding-bottom:48px}
+}

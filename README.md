@@ -131,6 +131,8 @@ How it works: your overlay publishes tiny "state" messages (track, position, pla
 
 ## Accounts & friends
 
+New accounts pick their own **@handle** at first sign-in — it's permanent and unique.
+
 Gear → **Account → Continue with Google**. Your Google name and picture come along; change either in the panel, upload your own picture, and pick a unique **@handle**.
 
 **Friends:** add people by @handle. They get a request they can accept or decline. Your friends list shows who's online, what they're listening to, and — when a friend is hosting a listen-along session — a **Join** button that drops you straight in. Your account name is what everyone sees in sessions and games.

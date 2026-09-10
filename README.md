@@ -65,7 +65,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** —
 - **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, beat tap, type the line; solo or with your session
 - **Remix Studio** — press ✳ Remix on the overlay to drag the artwork, lyrics and label anywhere, pick a material (rain glass, liquid chrome, ink & paper, departure board), set the overlay's presence behavior, and save or share your look as an Edition — with Studio Ghibli–esque scenes, ten silly 8-bit playgrounds (capybara spa, toast train, tiny kaiju…) and pixel weather
 - **Shortcuts and auto-hide** — global hotkeys to show/hide the overlay, and fade-out after N minutes of silence
-- **Three lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
+- **Four lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter), and **Minimal** (the clean Spotify / Musixmatch look: one bold sans, no glow) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
 - **Hologram projector** mode — a lens at the bottom of the screen projects the overlay; click it to power the hologram down/up

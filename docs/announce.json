@@ -1,7 +1,7 @@
 {
-  "id": "2026-09-discord",
-  "minVersion": "3.4.3",
-  "title": "Come hang in the Discord",
-  "body": "Cadence has a Discord now — song requests, listen-along rooms, feature ideas, and first dibs on whatever ships next.\n\nThere's also a Join the Discord button under Social in settings whenever you want it.",
-  "cta": { "label": "Join the Discord", "action": "url", "url": "https://discord.gg/w3GWuF3Psm" }
+  "id": "2026-09-400-special",
+  "minVersion": "3.5.0",
+  "title": "400 downloads special!!",
+  "body": "We hit 400 downloads. Thank you for being here.\n\nThis is the big one. Click Friends next to the Remix button. Chat with friends, send them the song you're playing, let them add songs to your queue, listen along, play karaoke and games, and share your listening card, all in one window.\n\nRemix can use your own images as scenes now too.",
+  "cta": { "label": "Open Friends", "action": "social" }
 }

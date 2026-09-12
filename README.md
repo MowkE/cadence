@@ -71,7 +71,7 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** —
 - **Hologram projector** mode — a lens at the bottom of the screen projects the overlay; click it to power the hologram down/up
 - **Playback controls** on hover, plus **ring scrubbing**: drag the progress arc around the album art to seek
 - **Layouts**: full, focus (3-line), mini ticker bar, and **Notch** — just the current line, pinned to the top-centre of the screen under the camera notch, nothing else; plus a **Lyrics only** switch that hides the album art, ring and visualizer in any layout
-- **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, daily listening recap, ambient screensaver mode when idle
+- **Extras**: lyric translation, chorus fireworks, portal transitions between songs, star field, vinyl spin, night shift, a shareable listening card (today or this month, in the friends window), ambient screensaver mode when idle
 - **Mac, Windows and Linux**, one codebase, no Python or extra installs
 
 ## Setup: there isn't any
@@ -115,13 +115,13 @@ The **Spotify** section in settings picks the source: **Auto** (the Web API whil
 
 Share your music with a friend who also has Cadence:
 
-**Host:** gear → **Listen along** → **Start a session**. Cadence generates a code like `K7PM-3QXZ` and copies an invite (`cadence://join/K7PM-3QXZ`) to your clipboard. Paste it to a friend. The panel shows how many people are listening; **End** stops the session.
+**Host:** open the friends window (gear → **Account → Open friends**, or the **Friends ↗** button that appears when you hover the overlay) → **Listen along** → **Start a session**. Cadence generates a code like `K7PM-3QXZ` and copies an invite (`cadence://join/K7PM-3QXZ`) to your clipboard. Paste it to a friend. The panel shows how many people are listening; **End** stops the session.
 
-**Friend:** click the link (it opens Cadence) or paste the code into gear → **Listen along** → **Join**. Their overlay switches to your track and lyrics, in sync with where you are in the song — even if they haven't connected Spotify. With **Play on my Spotify too** on (default), Cadence also starts the same song on their Spotify at the same position, follows your skips, pauses and seeks, and pauses when they leave. That part needs the Spotify app open on their side; on Mac any account works, on Windows it needs Web API keys (see above).
+**Friend:** click the link (it opens Cadence) or paste the code into the friends window → **Listen along** → **Join**. Their overlay switches to your track and lyrics, in sync with where you are in the song — even if they haven't connected Spotify. With **Play on my Spotify too** on (default), Cadence also starts the same song on their Spotify at the same position, follows your skips, pauses and seeks, and pauses when they leave. That part needs the Spotify app open on their side; on Mac any account works, on Windows it needs Web API keys (see above).
 
-**Names:** the host's panel lists who's listening by name. Cadence uses your Spotify display name (Web API) or your account name on this computer; set anything you like in gear → **Listen along** → *Your name*.
+**Names:** the host's panel lists who's listening by name. Cadence uses your Spotify display name (Web API) or your account name on this computer; it's your account name once you're signed in.
 
-**Handoff:** each listener in the host's panel has a 🎧→ button — press it and that friend becomes the host while you keep listening. If the host quits Cadence with people still listening, the session hands itself to the first listener instead of ending.
+**Handoff:** each listener in the host's panel has a **Hand off 🎧→** button — press it and that friend becomes the host while you keep listening. If the host quits Cadence with people still listening, the session hands itself to the first listener instead of ending.
 
 **The room picks the next song** (host toggle in the hosting panel): in the last 30 seconds of each song, the pending requests go to a 20-second vote on everyone's overlay — up to 4 options, one pick each — and the winner plays next, automatically. A single request just plays. Ties go to the earliest request; losing requests stay in the list for the next vote.
 
@@ -135,7 +135,7 @@ New accounts pick their own **@handle** at first sign-in — it's permanent and 
 
 Gear → **Account → Continue with Google**. Your Google name and picture come along; change either in the panel, upload your own picture, and pick a unique **@handle**.
 
-**Friends:** add people by @handle. They get a request they can accept or decline. Your friends list shows who's online, what they're listening to, and — when a friend is hosting a listen-along session — a **Join** button that drops you straight in. Your account name is what everyone sees in sessions and games.
+**Friends:** everything social lives in the friends window (gear → **Account → Open friends**, or hover the overlay for **Friends ↗**): add people by @handle, chat and send song postcards, see what they're listening to, start or join listen-along sessions, open karaoke & games, and your listening card. When a friend is hosting a session, **Listen along** shows them under *Live right now* with a one-click **Join**. There's a little Discord icon up top, too. Your account name is what everyone sees in sessions and games.
 
 Accounts are optional — Cadence works fully without one; signing in just carries your name, picture and friends across devices.
 
@@ -149,7 +149,7 @@ Cadence checks GitHub for a new version 15 seconds after launch and every 6 hour
 
 ## Karaoke & games
 
-Gear → **🎤 Open Karaoke & games**. A setlist of room games that run on the synced lyric timing Cadence already has — no microphone, no extra accounts. Everyone in your listen-along session gets a colour, and that's how people show up in every game. The host starts the friends games; everyone's overlay follows.
+Friends window → **Karaoke & games**. A setlist of room games that run on the synced lyric timing Cadence already has — no microphone, no extra accounts. Everyone in your listen-along session gets a colour, and that's how people show up in every game. The host starts the friends games; everyone's overlay follows.
 
 | Game | Who | What |
 | --- | --- | --- |
@@ -176,7 +176,7 @@ Press **Esc** to leave a game or close the panel.
 
 ## Community
 
-Come hang in the Discord — requests, listen-along rooms, and whatever's next: **[discord.gg/w3GWuF3Psm](https://discord.gg/w3GWuF3Psm)**
+Come hang in the Discord — requests, listen-along rooms, and whatever's next: **[discord.gg/w3GWuF3Psm](https://discord.gg/w3GWuF3Psm)** (also the little Discord icon at the top of the friends window).
 
 ## License
 

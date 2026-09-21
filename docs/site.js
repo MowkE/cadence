@@ -192,3 +192,23 @@ async function mountSculptures(){
 mountSculptures();queueScroll();
 
 const parkour=initParkour({trigger:$('parkour-launch'),onOpen(){gameOpen=true;heroSculpture?.setPaused(true);labSculpture?.setPaused(true);if(isAudioOn)stopAudio();},onClose(){gameOpen=false;heroSculpture?.setPaused(false);labSculpture?.setPaused(labPaused);examples.refresh();queueScroll();}});
+
+// ?invite=handle: a friend's invite. Say so next to the download, remember it,
+// and offer the app link for people who already have Cadence installed.
+try {
+  const inv = new URLSearchParams(location.search).get('invite');
+  const h = inv && /^@?[A-Za-z0-9_]{3,20}$/.test(inv) ? inv.replace(/^@/, '').toLowerCase() : null;
+  if (h) {
+    try { localStorage.setItem('cadence.invite', h); } catch {}
+    const box = document.querySelector('.download-box');
+    if (box) {
+      const note = document.createElement('p');
+      note.className = 'invite-note';
+      const b1 = document.createElement('b'); b1.textContent = '@' + h;
+      const b2 = document.createElement('b'); b2.textContent = '@' + h;
+      const a = document.createElement('a'); a.href = 'cadence://invite/' + h; a.textContent = 'Open in Cadence';
+      note.append(b1, ' invited you. Install Cadence, sign in, and enter ', b2, ' under Settings → Account → Invite friends. Already installed? ', a, '.');
+      box.appendChild(note);
+    }
+  }
+} catch {}

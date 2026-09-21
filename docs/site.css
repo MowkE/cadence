@@ -69,3 +69,6 @@
 .world-stage[data-world="snow"] .world-vignette{background:linear-gradient(180deg,#eef1f411,#f3f0f355 50%,#09151fd9)}
 .world-stage[data-world="snow"] .world-progress{background:#25344233}
 .world-stage[data-world="snow"] .world-progress i{background:#394f63}
+
+.invite-note { margin: 14px 0 0; font-size: 0.9rem; line-height: 1.5; opacity: 0.9; }
+.invite-note a { text-decoration: underline; }

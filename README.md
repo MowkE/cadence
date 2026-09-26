@@ -147,6 +147,10 @@ Cadence is free to try; after about 5 minutes of use it asks you to sign in (Goo
 
 Cadence checks GitHub for a new version 15 seconds after launch and every 6 hours. On **Windows** it downloads quietly and installs the next time you open Cadence (or press *Restart to update*). On **Mac** it tells you in settings and the menu-bar icon and gives you a one-click download of the right DMG.
 
+## Invite friends
+
+Remix and Friends open by bringing people in. Your invite link is in **gear → Account → Invite friends** (it is `cadence://invite/@yourhandle`, with a website link for people who don't have Cadence yet). When one friend installs Cadence and signs in with your handle, **Remix** opens for you. At two, **Friends** opens: chat, listen along, karaoke & games, your listening card. Someone who was invited enters the handle once under **Account → Use invite**; it counts the moment they sign in. Accounts from before this existed keep everything.
+
 ## Karaoke & games
 
 Friends window → **Karaoke & games**. A setlist of room games that run on the synced lyric timing Cadence already has — no microphone, no extra accounts. Everyone in your listen-along session gets a colour, and that's how people show up in every game. The host starts the friends games; everyone's overlay follows.
@@ -170,6 +174,7 @@ Press **Esc** to leave a game or close the panel.
 - **Auto-hide when paused**: pick 1 / 5 / 15 minutes and the overlay fades out after that long without music, fading back in when something plays; hover it to peek
 - The window is click-through everywhere except its controls. If something underneath still isn't getting your clicks, turn on **Click-through lock** (settings, or the tray menu): the overlay then never takes the mouse unless a panel is open
 - On Windows the overlay re-asserts itself above borderless/windowed-fullscreen apps (games, video). Exclusive-fullscreen games can't be overlaid by any window — switch the game to borderless
+- On Windows the overlay never takes keyboard focus on its own, so a game underneath keeps the mouse locked while lines change. It only becomes focusable while a panel is open or you click into a text field, and drops it again when you click away. While it is click-through it has no taskbar button; the tray icon is its handle
 - Hover the album art for playback controls; with Progress arc enabled, drag the ring around the art to scrub through the song
 - Play music and go idle for a minute — Cadence becomes a full-screen ambient lyric display until you touch the mouse or keyboard
 - Menu bar / tray icon: show, hide, open settings, copy the invite link while hosting, quit

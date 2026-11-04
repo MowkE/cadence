@@ -59,13 +59,15 @@ Cadence lives in your **menu bar (Mac)** / **system tray (Windows & Linux)** —
 
 ## Features
 
-- **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed. **YouTube Music** works too, straight from the browser tab
+- **No setup, no Premium** — reads the Spotify app on your Mac or PC directly; no developer app or API keys needed. **YouTube Music** and **Apple Music** work too
 - **Synced lyrics** from LRCLIB (karaoke-style line highlighting), with Genius as an automatic fallback
+- **Make the words yours** — pick the lyric font (System, Rounded, Serif, Helvetica, Avenir, Futura, Didot, Mono), the text size, and your own colors for the lyrics, the current line and the song name. **Word by word** lights the sung word in a box and **Lens** curves the lines around the current one like glass
+- **Your screen, your rules** — choose which monitor the overlay lives on, keep the screen awake while music plays, and turn off the full-screen takeover when you step away
 - **Listen along** — start a session, share the code or `cadence://` link, and friends follow your lyrics live in their own overlay; Cadence can also play the same song on their speakers, in sync. See who's listening by name, and let them **request songs**
 - **Karaoke & games** — full-screen karaoke, duets, guess the song, finish the line, lyric liar, hot mic; solo or with your session
 - **Remix Studio** — press ✳ Remix on the overlay to drag the artwork, lyrics and label anywhere, pick a material (rain glass, liquid chrome, ink & paper, departure board), set the overlay's presence behavior, and save or share your look as an Edition — with Studio Ghibli–esque scenes, ten silly 8-bit playgrounds (capybara spa, toast train, tiny kaiju…) and pixel weather
 - **Shortcuts and auto-hide** — global hotkeys to show/hide the overlay, and fade-out after N minutes of silence
-- **Four lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter), and **Minimal** (the clean Spotify / Musixmatch look: one bold sans, no glow) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
+- **Ten lyric styles** — Cyberpunk, Ethereal, Retro (terminal + typewriter), **Minimal** (the clean Spotify / Musixmatch look: one bold sans, no glow), **Marquee** (theatre bulbs chasing around the current line), **Ink** (handwriting with a highlighter), **Poster** (condensed capitals on a color band), **Hollow** (outlined letters that fill in as they are sung), **Gilded** (gold capitals that catch the light) and **Noir** (a film title card) — plus an **Auto** mode that picks a style and one of 30 fonts per track based on the album art
 - **Album-adaptive theming**: colors extracted from the cover tint the lyrics, visualizer, and UI
 - **3D parallax tilt** with per-style hover frames: neon billboard (with thrusters), CRT terminal, aurora glass
 - **Hologram projector** mode — a lens at the bottom of the screen projects the overlay; click it to power the hologram down/up
@@ -86,7 +88,7 @@ Free accounts get everything: lyrics, visuals, and the play/pause/skip/seek cont
 
 ### YouTube Music
 
-Cadence works with YouTube Music too — pick **YouTube Music** under gear → **Music source** (or leave it on **Auto**, which follows whichever of Spotify / YouTube Music is playing).
+Cadence works with YouTube Music too — pick **YouTube Music** under gear → **Music source** (or leave it on **Auto**, which follows whichever of Spotify / YouTube Music / Apple Music / TIDAL is playing).
 
 - **Mac:** Cadence reads the YouTube Music tab in your browser — Chrome, Brave, Edge, Arc, Vivaldi or Safari. The browser has to allow it once: in Chrome-style browsers, **View → Developer → Allow JavaScript from Apple Events**; in Safari, **Develop → Allow JavaScript from Apple Events** (turn on the Develop menu in Settings → Advanced). The first time Cadence spots a YouTube Music tab it can't read, a card in the overlay walks you through it step by step and closes itself once it connects. You get lyrics, art, exact timing and the play/pause/skip/seek controls.
 - **Windows:** nothing to set up — the browser (or the YouTube Music desktop app) already reports to the system media session Cadence listens to.
@@ -94,7 +96,38 @@ Cadence works with YouTube Music too — pick **YouTube Music** under gear → *
 
 **Using Pear Desktop** (the YouTube Music desktop app, formerly *youtube-music*)? Turn on its **API Server** plugin (Settings → Plugins → API Server), and the first time Cadence asks, click **Allow** in the Pear Desktop window. From then on Cadence reads the song, timing and controls straight from Pear — on Mac, Windows and Linux alike, no browser needed. Pear's own Synced Lyrics plugin can stay on; Cadence draws its lyrics from the same source, just floating over everything.
 
-Listen-along guests can follow a YouTube Music host's lyrics, but *playing along* and the room vote need a Spotify host, since requests are Spotify links.
+**Playing along across services.** A guest follows any host's lyrics. To also hear the song, Cadence finds it where the guest listens:
+
+| Guest listens on | Plays along with a host on any service? |
+| --- | --- |
+| Spotify app (Mac) | Spotify hosts, yes. Other hosts need Spotify Web API keys (the app has no search) |
+| Spotify Web API keys | Yes, any host |
+| YouTube Music in a browser (Mac) | Yes, any host |
+| Pear Desktop | Yes, any host (Pear 3.5 or newer, with the API Server plugin) |
+| Apple Music (Mac) | Songs already in your library |
+| TIDAL, or any player on Windows and Linux without Spotify keys | Lyrics only |
+
+Song requests and the room vote are Spotify links, so they need a Spotify host.
+
+### Apple Music
+
+Pick **Apple Music** under gear → **Music source**, or leave it on **Auto**.
+
+- **Mac:** Cadence reads the Music app directly. The first time, macOS asks once to let Cadence control Music. Click Allow (or fix it later under System Settings → Privacy & Security → Automation).
+- **Windows:** nothing to set up. The Apple Music app (and iTunes) report to the system media session Cadence listens to.
+- **Linux:** Cider announces Apple Music over MPRIS and Cadence picks it up.
+
+Album art comes from Apple's own catalog by song name, or from the artwork in the track itself. Apple Music songs have no Spotify link, so listen-along guests follow the lyrics and Cadence plays along only when the song is already in their own library.
+
+### TIDAL
+
+Pick **TIDAL** under gear → **Music source**, or leave it on **Auto**.
+
+- **Mac:** Cadence reads the TIDAL app, or TIDAL playing in Safari or Chrome, through the system's Now Playing (the same thing Control Center shows). Play, pause, skip and seek work.
+- **Windows:** the TIDAL app reports to the system media session Cadence listens to.
+- **Linux:** TIDAL Hi-Fi, or listen.tidal.com in a browser, over MPRIS.
+
+TIDAL can't be told to play a specific song from outside, so a TIDAL guest follows a listen-along host's lyrics without the audio.
 
 ### Optional: Spotify Web API keys
 

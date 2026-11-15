@@ -3,71 +3,264 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
 <title>Sign in to Cadence</title>
+<!--
+  The Google sign in page. Cadence serves it from http://localhost and takes the token back at
+  POST /done. The website hosts the same file, where the token goes back in a cadence:// link or
+  as a code to paste. docs/auth.html is a copy of src/signin.html. Keep the two the same.
+-->
 <style>
-  :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-         background: #0e1014; color: #f2f2f7; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
-  .card { width: min(420px, 92vw); padding: 32px 36px; border-radius: 18px; background: rgba(255,255,255,.05);
-          border: 1px solid rgba(255,255,255,.1); text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
-  h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.01em; }
-  p { margin: 0 0 18px; color: #b8b8c4; }
-  button { min-height: 46px; padding: 0 22px; border: 0; border-radius: 12px; background: #fff; color: #0b0b10;
-           font: inherit; font-weight: 600; cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  .err { color: #ff8a8a; }
-  .fine { font-size: 12px; color: #7d7d8a; margin-top: 16px; }
+  /* The paper, Inter and sage of the cards inside Cadence (src/cards.css) */
+  :root {
+    color-scheme: light;
+    --page: #f5f3ea; --card: #fbfaf4; --rule: #e4e5db; --line: #d6dacb; --field: #f1f3eb;
+    --ink: #2f3a2b; --text: #4a5547; --muted: #7b8375;
+    --accent: #3e604b; --accent-press: #2c4b38; --accent-ink: #fffdef;
+    --warn: #a5562b; --focus: #648970;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #151815; --card: #1c201d; --rule: #2d342e; --line: #3b443c; --field: #252b26;
+      --ink: #f2f0e6; --text: #c6cabb; --muted: #98a091;
+      --accent: #a3c596; --accent-press: #b9d6ad; --accent-ink: #162017;
+      --warn: #e6a078; --focus: #a3c596;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  /* Parts come and go with the hidden attribute, which the display rules below would otherwise beat */
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; min-height: 100vh; min-height: 100dvh; padding: 24px 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--page); color: var(--text);
+    font: 14px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+  }
+  .card {
+    width: min(380px, 92vw); padding: 28px;
+    border: 1px solid var(--rule); border-radius: 10px; background: var(--card);
+    box-shadow: 0 18px 48px rgba(27, 34, 26, .18); text-align: left;
+  }
+  .mark { margin: 0 0 14px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  h1 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -0.3px; color: var(--ink); text-wrap: balance; }
+  #msg { margin: 6px 0 0; text-wrap: pretty; }
+  body[data-state="error"] #msg { color: var(--warn); }
+
+  /* The one solid button */
+  #go {
+    height: 40px; margin-top: 20px; padding: 0 18px; border: 0; border-radius: 2px;
+    background: var(--accent); color: var(--accent-ink);
+    font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer;
+    transition: background-color .15s;
+  }
+  #go:hover { background: var(--accent-press); }
+  #go:disabled { background: var(--accent); opacity: .45; cursor: default; }
+
+  /* Every other action is an underlined word */
+  .word {
+    padding: 4px 0; border: 0; border-radius: 0; background: none;
+    color: var(--ink); font: inherit; font-weight: 500; cursor: pointer;
+    text-decoration: underline; text-decoration-color: var(--line);
+    text-decoration-thickness: 1px; text-underline-offset: 4px;
+    transition: text-decoration-color .15s;
+  }
+  .word:hover { text-decoration-color: var(--ink); }
+
+  #help { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule); animation: appear .2s ease-out; }
+  .ask { margin: 0; font-weight: 600; color: var(--ink); }
+  .acts { display: flex; flex-wrap: wrap; gap: 2px 20px; margin: 4px 0 0; }
+  #code {
+    display: block; width: 100%; height: 86px; margin: 10px 0 0; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 2px; background: var(--field); color: var(--ink);
+    font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all; resize: none;
+  }
+  #note { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  @keyframes appear { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
-<body>
-<div class="card">
-  <h1>Cadence</h1>
-  <p id="msg">Sign in to use your account, friends and profile picture in Cadence.</p>
-  <button id="go">Continue with Google</button>
-  <div class="fine" id="fine">You'll be sent straight back to Cadence.</div>
-</div>
+<body data-state="ready">
+<main class="card">
+  <p class="mark">Cadence</p>
+  <h1 id="title">Sign in to Cadence</h1>
+  <p id="msg" role="status" aria-live="polite">Choose your Google account to finish.</p>
+  <!-- Off until the script at the bottom runs, which is once the Firebase scripts have arrived or failed -->
+  <button id="go" type="button" disabled>Continue with Google</button>
+  <div id="help" hidden>
+    <p class="ask">Nothing happened?</p>
+    <p class="acts">
+      <a id="open" class="word">Open Cadence</a>
+      <button id="copy" class="word" type="button">Copy code</button>
+    </p>
+    <textarea id="code" readonly hidden spellcheck="false" aria-label="Sign in code"></textarea>
+    <p id="note" aria-live="polite">If Cadence does not open, copy the code. In Cadence choose Paste a code.</p>
+  </div>
+</main>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script>
 (() => {
+  'use strict';
   const q = new URLSearchParams(location.search);
   const state = q.get('state') || '';
-  const cfg = { apiKey: q.get('apiKey') || '', authDomain: q.get('authDomain') || '', projectId: q.get('projectId') || '' };
-  const msg = document.getElementById('msg');
-  const go = document.getElementById('go');
-  const back = params => { location.href = 'cadence://auth#' + new URLSearchParams(params).toString(); };
+  // Served by Cadence itself, the token goes straight back over HTTP. Anywhere else it rides in a cadence:// link.
+  const local = location.protocol === 'http:' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  // Which project the Google window signs in to. On the website it is always Cadence's own, so a
+  // crafted address cannot point this page's Google window somewhere else. Served by the app on
+  // this computer, the app says which (a test build uses its own project).
+  const CADENCE = { apiKey: "AIzaSyD2QWdvwrRTx608aHuRxKLxXQO6L1audbA", authDomain: "cadence-f4b4e.firebaseapp.com", projectId: "cadence-f4b4e" };
+  const asked = { apiKey: q.get('apiKey') || '', authDomain: q.get('authDomain') || '', projectId: q.get('projectId') || '' };
+  const cfg = local && asked.apiKey && /^[a-z0-9-]+\.(firebaseapp\.com|web\.app)$/.test(asked.authDomain) ? asked : CADENCE;
+  // An emulator is only ever a test build's, on this computer, so both ends must be local by exact name
+  const emulator = (() => {
+    const text = q.get('emulator') || '';
+    if (!local || !text) return '';
+    try { const u = new URL(text); return /^https?:$/.test(u.protocol) && !u.username && (u.hostname === 'localhost' || u.hostname === '127.0.0.1') ? text : ''; }
+    catch (err) { return ''; }
+  })();
+  // The page cannot see whether Cadence opened, so the way out shows up after this long either way
+  const HELP_DELAY_MS = 2500;
 
-  if (!cfg.apiKey || !state) {
-    msg.textContent = cfg.apiKey ? 'Open this page from Cadence (gear → Account → Sign in).' : 'Cadence accounts aren\'t set up on this build yet.';
-    go.disabled = true;
-    return;
+  const $ = id => document.getElementById(id);
+  const title = $('title'), msg = $('msg'), go = $('go'), help = $('help'), open = $('open'), copy = $('copy'), code = $('code'), note = $('note');
+
+  const VIEWS = {
+    invalid: ['Open this from Cadence', 'In Cadence press Continue with Google. This page opens by itself.'],
+    ready: ['Sign in to Cadence', 'Choose your Google account to finish.'],
+    google: ['Waiting for Google', 'A Google window opened. Choose your account there.'],
+    sending: ['Signing you in', 'One moment.'],
+    done: ['You are signed in', 'Go back to Cadence. You can close this tab.'],
+    link: ['Signed in', 'Cadence should open now. You can close this tab.'],
+    error: ['That did not work', 'Sign in did not finish. Try again.'],
+    noload: ['Sign in could not load', 'Check your internet and reload this page.']
+  };
+  const DONE_NEEDS_HANDLE = 'Go back to Cadence to pick your handle. You can close this tab.';
+  const CLOSED = 'The Google window was closed. Press the button to try again.';
+  // Cadence is no longer waiting for this page (it was left open too long, or a newer one was opened)
+  const STALE = 'This page is out of date. Go back to Cadence and press Continue with Google again.';
+  // Closing the Google window is a change of mind, not a failure
+  const CLOSED_CODES = ['auth/popup-closed-by-user', 'auth/cancelled-popup-request', 'auth/user-cancelled'];
+  // Firebase's own messages are written for developers, so each code gets a sentence of ours
+  const PROBLEMS = new Map([
+    ['auth/popup-blocked', 'Your browser blocked the Google window. Allow pop ups for this page, then press the button again.'],
+    ['auth/network-request-failed', 'No connection. Check your internet and try again.'],
+    ['auth/unauthorized-domain', 'This page is not allowed to sign in yet.'],
+    ['auth/operation-not-allowed', 'Google sign in is not switched on for Cadence yet.'],
+    ['auth/web-storage-unsupported', 'Your browser is blocking storage that sign in needs. Try another browser.']
+  ]);
+
+  function show(view, text) {
+    document.body.dataset.state = view;
+    title.textContent = VIEWS[view][0];
+    msg.textContent = text || VIEWS[view][1];
+    go.hidden = !(view === 'ready' || view === 'google' || view === 'error');
+    go.disabled = view === 'google';
+    go.textContent = view === 'error' ? 'Try again' : 'Continue with Google';
   }
-  firebase.initializeApp(cfg);
-  const auth = firebase.auth();
-  const emu = q.get('emulator');
-  if (emu && /^https?:\/\/(127\.0\.0\.1|localhost)/.test(emu)) auth.useEmulator(emu, { disableWarnings: true });
+
+  function fail(text) {
+    show('error', text);
+    // The button was switched off while Google was open, which drops keyboard focus
+    go.focus();
+  }
+
+  function problem(err) {
+    const name = err && typeof err.code === 'string' ? err.code : '';
+    if (CLOSED_CODES.includes(name)) { show('ready', CLOSED); go.focus(); return; }
+    fail(PROBLEMS.get(name));
+  }
+
+  // Firebase is read when the button is pressed, not when the page loads, so a page whose
+  // scripts never arrived can say so. The app is set up once per copy of the SDK.
+  let sdk = null, auth = null;
+  function openGoogle() {
+    const fb = window.firebase;
+    if (!fb || typeof fb.initializeApp !== 'function' || typeof fb.auth !== 'function') return null;
+    if (sdk !== fb) {
+      if (!(fb.apps && fb.apps.length)) fb.initializeApp(cfg);
+      auth = fb.auth();
+      if (emulator) auth.useEmulator(emulator, { disableWarnings: true });
+      // The app is what stays signed in. Nothing about this sign in is kept in the browser.
+      try { if (typeof auth.setPersistence === 'function' && fb.auth.Auth && fb.auth.Auth.Persistence) Promise.resolve(auth.setPersistence(fb.auth.Auth.Persistence.NONE)).catch(() => {}); } catch (err) { /* older SDK: signing out below does the same */ }
+      sdk = fb;
+    }
+    const provider = new fb.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return auth.signInWithPopup(provider);
+  }
 
   go.addEventListener('click', async () => {
-    go.disabled = true;
-    msg.textContent = 'Finishing sign-in with Google…';
+    let token = '';
     try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const result = await auth.signInWithPopup(provider);
-      const idToken = result.credential && result.credential.idToken;
-      if (!idToken) throw new Error('Google did not return a token');
-      msg.textContent = 'Signed in. Sending you back to Cadence…';
-      document.getElementById('fine').textContent = 'You can close this tab once Cadence opens.';
-      back({ state, id_token: idToken });
+      // Started inside the click itself, or the browser treats the Google window as a pop up to block
+      const attempt = openGoogle();
+      if (!attempt) { show('noload'); return; }
+      show('google');
+      const result = await attempt;
+      token = (result && result.credential && result.credential.idToken) || '';
+      // The token is all that was needed. Sign the browser back out so no session is left behind in it.
+      try { if (auth && typeof auth.signOut === 'function') Promise.resolve(auth.signOut()).catch(() => {}); } catch (err) { /* nothing was kept */ }
+    } catch (err) { problem(err); return; }
+    if (!token) { fail(); return; }
+    handBack(token);
+  });
+
+  async function handBack(token) {
+    if (local) {
+      show('sending');
+      let answer = null;
+      try {
+        const res = await fetch('/done', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state, id_token: token })
+        });
+        if (res.status < 500) answer = await res.json();
+      } catch (err) { answer = null; }
+      if (answer && answer.ok === true) { show('done', answer.needsHandle === true ? DONE_NEEDS_HANDLE : ''); return; }
+      if (answer && answer.ok === false) {
+        // Only Cadence can start a new sign in, so there is nothing for this page's button to do
+        if (answer.stale === true) { show('error', STALE); go.hidden = true; return; }
+        fail(typeof answer.error === 'string' ? answer.error : '');
+        return;
+      }
+      // No answer to read means Cadence is no longer listening. The link still reaches it once it is open.
+    }
+    sendLink(token);
+  }
+
+  let link = '';
+  function sendLink(token) {
+    link = 'cadence://auth#' + new URLSearchParams({ state, id_token: token });
+    open.href = link;
+    show('link');
+    location.href = link;
+    setTimeout(() => { help.hidden = false; }, HELP_DELAY_MS);
+  }
+
+  copy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      note.textContent = 'Code copied. In Cadence choose Paste a code.';
     } catch (err) {
-      msg.innerHTML = '<span class="err">' + (err && err.message ? err.message : 'Sign-in failed') + '</span>';
-      go.disabled = false;
-      go.textContent = 'Try again';
-      if (err && err.code === 'auth/popup-closed-by-user') return;
-      if (err && err.code === 'auth/unauthorized-domain') msg.innerHTML += '<br><span class="fine">Add this page\'s domain under Firebase → Authentication → Settings → Authorized domains.</span>';
-      if (err && err.code === 'auth/operation-not-allowed') msg.innerHTML = '<span class="err">Google sign-in isn\'t switched on for this project yet.</span><br><span class="fine">The owner needs to enable Google under Firebase → Authentication → Sign-in method.</span>';
+      // No clipboard on this page, or the browser said no. Show the code so it can be copied by hand.
+      code.value = link;
+      code.hidden = false;
+      code.focus();
+      code.select();
+      // Selecting scrolls to the end. The start is the part that reads as a Cadence code.
+      code.scrollTop = 0;
     }
   });
+
+  show(state && cfg.apiKey ? 'ready' : 'invalid');
 })();
 </script>
 </body>

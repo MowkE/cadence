@@ -1,7 +1,7 @@
 {
-  "id": "2026-09-400-special",
-  "minVersion": "3.5.0",
-  "title": "400 downloads special!!",
-  "body": "We hit 400 downloads. Thank you for being here.\n\nThis is the big one. Click Friends next to the Remix button. Chat with friends, send them the song you're playing, let them add songs to your queue, listen along, play karaoke and games, and share your listening card, all in one window.\n\nRemix can use your own images as scenes now too.",
-  "cta": { "label": "Open Friends", "action": "social" }
+  "id": "2026-11-1500-users",
+  "minVersion": "3.9.0",
+  "title": "Thank you for 1500 users!!",
+  "body": "Thank you guys so so so much for 1500 users. Please let me know if you want any more features. I've been trying to do milestone features but the milestones are just going by.\n\nThis update is about listening together. Listen along now works across Spotify, YouTube Music, Apple Music and TIDAL. If Cadence can't start the song for you, start it yourself and it keeps you in time.\n\nJoin the Discord for bug reports and feature additions!!",
+  "cta": { "label": "Join the Discord", "action": "url", "url": "https://discord.gg/DA5NeAxdhy" }
 }

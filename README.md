@@ -160,7 +160,7 @@ Share your music with a friend who also has Cadence:
 
 **Song requests:** guests paste a Spotify song link (Spotify → Share → Copy Song Link) or press **Request what I'm playing**. The host sees the request with album art and who asked, and can **▶ play it now**, **＋ queue it** (Web API only), or **✕ pass** — guests get told which happened.
 
-How it works: your overlay publishes tiny "state" messages (track, position, playing) to a private, randomly named topic on [ntfy.sh](https://ntfy.sh) — only when something changes, never your audio or account. Guests subscribe to that topic. Anyone with the code can follow, so share it like a party invite. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
+How it works: your overlay publishes tiny "state" messages (track, position, playing) to a randomly named topic on [ntfy.sh](https://ntfy.sh), a public relay, only when something changes. Never your audio. Guests subscribe to that topic. In this version it is not encrypted beyond HTTPS and anyone with the code can follow, so share it like a party invite. The next version encrypts sessions end to end. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
 
 ## Accounts & friends
 
@@ -170,11 +170,23 @@ Gear → **Account → Continue with Google**. Your Google name and picture come
 
 **Friends:** everything social lives in the friends window (gear → **Account → Open friends**, or hover the overlay for **Friends ↗**): add people by @handle, chat and send song postcards, see what they're listening to, start or join listen-along sessions, open karaoke & games, and your listening card. When a friend is hosting a session, **Listen along** shows them under *Live right now* with a one-click **Join**. There's a little Discord icon up top, too. Your account name is what everyone sees in sessions and games.
 
-Accounts are optional — Cadence works fully without one; signing in just carries your name, picture and friends across devices.
+After about five minutes of use Cadence asks you to sign in (see Sign-up below). What an account stores, and who can see it, is in [PRIVACY.md](PRIVACY.md).
 
 ## Sign-up
 
 Cadence is free to try; after about 5 minutes of use it asks you to sign in (Google) and keeps asking until you do. Nothing else changes — same lyrics, same features — but your name, picture and friends come with you.
+
+## Your data
+
+The short version. The full account, written from an audit of the code, is in [PRIVACY.md](PRIVACY.md).
+
+- **No analytics, telemetry, crash reports or ads.** Nothing reports how you use Cadence, and nothing is sold.
+- **Lyrics lookups.** Each song's title, artist, album and length go to [LRCLIB](https://lrclib.net) to find lyrics (Genius only when LRCLIB has none). Artwork lookups go to Apple and Deezer for players that do not supply it.
+- **What it reads on your computer.** The song that is playing, and how bright the screen is behind the overlay (a tiny picture that is measured and thrown away, never saved or sent). No keystrokes, no audio, no browsing history.
+- **Accounts.** Google sign in gives Cadence your name, email and picture. The cloud keeps your profile, friends, messages and the song you are playing now, which your friends can see. Your email is not stored in the database.
+- **Listen along** goes through a public relay. In this version it is not encrypted and anyone with the session code can see what the session plays. The next version encrypts it end to end.
+- **Statistics** (the listening card, recaps) are worked out and kept on your computer. They leave only when you send one to a friend.
+- **Deleting.** Delete the app's data folder to wipe your computer. This version has no button to delete an account; the next one does. Until then, ask in the Discord or open an issue with your @handle.
 
 ## Updates
 

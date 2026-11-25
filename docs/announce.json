@@ -1,7 +1,10 @@
 {
-  "id": "2026-11-1500-users",
-  "minVersion": "3.9.0",
-  "title": "Thank you for 1500 users!!",
-  "body": "Thank you guys so so so much for 1500 users. Please let me know if you want any more features. I've been trying to do milestone features but the milestones are just going by.\n\nThis update is about listening together. Listen along now works across Spotify, YouTube Music, Apple Music and TIDAL. If Cadence can't start the song for you, start it yourself and it keeps you in time.\n\nJoin the Discord for bug reports and feature additions!!",
-  "cta": { "label": "Join the Discord", "action": "url", "url": "https://discord.gg/DA5NeAxdhy" }
+  "id": "2026-11-3100-modes",
+  "minVersion": "3.10.0",
+  "title": "Cadence 3.10 is here",
+  "body": "Modes. One switch that sets Cadence up for what you are doing. Study has a focus timer you can share in a session. Dev pings you when your AI is done. Inspiration shows a quote, picture or clip of yours when no music is playing.\n\nStage is open to everyone now, in Settings, Effects.\n\nYour data. You can delete your account, listen along is encrypted, and there is a privacy page that says what Cadence does. Everyone in a listen along session needs this version.",
+  "cta": {
+    "label": "Open Settings",
+    "action": "settings"
+  }
 }

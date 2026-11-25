@@ -1,11 +1,12 @@
 # Privacy
 
-Last updated 16 November 2026. Applies to Cadence 3.9.1, the current version. What the next version changes is at the end.
+Last updated 25 November 2026.
+
+Applies to Cadence from version 3.10.0.
 
 Cadence is made and run by one person (MowkE on GitHub). There is no company behind it and no
 business model built on your data. This page says what the app reads, what it keeps, what leaves
-your computer, and who can see it. It was written from a line by line audit of the code, and where
-the app does something you might not like, it says so.
+your computer, and who can see it. It was written from a line by line audit of the code.
 
 ## The short version
 
@@ -13,12 +14,11 @@ the app does something you might not like, it says so.
 - Nothing is sold or shared for marketing. There is nobody to sell it to.
 - The app has to know what song is playing. To fetch lyrics it sends that song's title, artist,
   album and length to a lyrics service.
-- An account (Google sign in) is asked for after about five minutes of use. With an account, the
-  song you are playing is shown to your friends in the app. There is no switch for that yet.
-- Listen along runs through a public relay and is not encrypted. Anyone who has the session code
-  can see what the session is playing.
+- An account (Google sign in) is asked for after about five minutes of use. With an account your
+  friends can see the song you are playing. You can switch that off.
+- Listen along is encrypted end to end. The relay it runs through cannot read it.
 - Your listening statistics stay on your computer unless you choose to send a recap to a friend.
-- There is no delete button for an account in this version. The next version adds one.
+- You can delete your account, and everything the cloud holds about you, from inside the app.
 
 ## What Cadence reads on your computer
 
@@ -42,29 +42,47 @@ system theme instead. On Linux with Wayland the screen is never read.
 
 **Where the cursor is.** Only whether it is over the overlay, so the buttons can appear.
 
-**The clipboard.** Written when you press a copy button. Read once, only to clear a sign in code
-you pasted.
+**The clipboard.** Written when you press a copy button. Read when you press a button that takes
+text from it (your own lyrics for a song, a quote for Inspiration mode), and once to clear a sign
+in code you pasted.
+
+**Only if you turn these on:**
+
+- *Turn on with these apps* (Dev mode) reads the name of the app in front, so the mode
+  can switch itself. It is not saved or sent.
+- *Watch ChatGPT, Claude and Grok tabs* (Dev mode, Mac, off by default) looks at the addresses and
+  titles of your open tabs to find those sites and checks whether an answer is still being written.
+  It reads no conversation text and sends nothing anywhere.
+- Dev mode's set up buttons add lines to your Claude Code or Codex settings, only when you press
+  them, and keep a copy of the file first. Dev mode listens for pings on your own computer only
+  (127.0.0.1) and needs a key that never leaves your machine.
 
 **Not read at all.** No keystrokes. No microphone or system audio (the visualizer is drawn from
 the lyric timing, not from sound). No screenshots that are kept. No browsing history. No files
-other than images you add to Remix yourself.
+other than the images you add to Remix and the pictures, videos and sounds you add to Inspiration
+mode yourself.
 
 ## What stays on your computer
 
 Everything below lives in the app's data folder and nowhere else.
 
 - Your settings and looks.
-- Sign in tokens for your Cadence account, and for Spotify if you added your own Spotify keys.
-  These are plain files that only your user account on the computer can read. They are not
-  encrypted.
+- Sign in tokens for your Cadence account, and for Spotify if you added your own Spotify keys. On
+  Windows and Linux these are encrypted with the system's secure storage, tied to your login. On
+  Mac they are a file that only your user account can read: Cadence is not signed with an Apple
+  developer certificate, and for an unsigned app the Mac keychain would ask for your password after
+  every update.
 - Listening statistics: for each month, the songs you played with artist, artwork link, play count
-  and listening time. These are kept until you delete them. They are what the listening card is
-  made from.
+  and listening time. They are what the listening card is made from. Settings, Account, "Delete my
+  listening statistics" clears them.
+- Study mode's count of finished rounds and focus minutes per day.
 - Images you added to Remix.
+- Inspiration mode's pieces: the quotes you typed or took from your clipboard, and a copy of each
+  picture, video and sound you picked. They are shown on your overlay and nothing else is done
+  with them: no lookups, no uploads, never sent anywhere.
 
 The folder is `~/Library/Application Support/spotify-overlay` on Mac, `%APPDATA%\spotify-overlay`
 on Windows and usually `~/.config/spotify-overlay` on Linux. Deleting it resets Cadence completely.
-There is no button in the app that clears statistics yet.
 
 ## What leaves your computer
 
@@ -77,7 +95,7 @@ There is no button in the app that clears statistics yet.
 | Google Fonts | A request for the typefaces | Every launch |
 | GitHub | A request for the latest version, the announcement and a short public list of unlocked handles | Shortly after launch and every few hours |
 | Google Firebase | Your account data and friends features (next section). Also one request at every launch, signed in or not, asking whether sign in is available | With an account |
-| ntfy.sh | Listen along sessions (see below) | Only while you host or join a session |
+| ntfy.sh | Encrypted listen along sessions (see below) | Only while you host or join a session |
 | Spotify | Requests made with your own Spotify keys | Only if you added keys |
 | YouTube Music, iTunes Search | Artist and title, to find the host's song on your service | Only as a listen along guest |
 
@@ -95,62 +113,67 @@ do. Listen along and the friends features need an account.
 
 - Your profile: display name, @handle, picture link, the date you joined.
 - Your friends list and pending friend requests.
-- Your status: the song you are playing now (title, artist, artwork link), whether it is playing,
-  the session code if you are hosting, which friends may add to your queue, the app version, and
-  when it last changed. It is updated automatically, at most every 45 seconds.
+- Your status, if "Show friends what I am playing" is on (it is on until you switch it off): the
+  song you are playing now (title, artist, artwork link), whether it is playing, the session code
+  if you are hosting and letting friends join, which friends may add to your queue, the app
+  version, and when it last changed. It is updated at most every 45 seconds and is deleted when you
+  quit the app, sign out, or switch it off.
 - Your messages with friends: text, songs and lyric lines you send, and recaps you choose to share.
 - Who invited whom.
 
 **Your email address** is not stored in that database and is not shown to anyone in the app. It is
 held by Firebase Authentication, where I, as the owner of the project, can see the list of accounts
-with their email, sign up date and last sign in date. The app uses it for nothing else.
+with their email, sign up date and last sign in date. I use it for nothing.
 
 **Who can see what:**
 
-- Someone signed in who knows your @handle can look up your profile: display name, @handle,
-  picture link and join date. That is how adding a friend works. Profiles cannot be listed or
-  searched in bulk.
-- Your friends can see your status. It is removed when you sign out. It is not removed when you
-  quit the app, so your last song stays there; the app stops showing it to friends after three
-  minutes.
-- Messages can be read by the two people in the conversation. They cannot be edited or deleted in
-  the app today.
-- Messages are not end to end encrypted. As the owner of the Firebase project I am technically
-  able to read anything in the database.
+- Someone who knows your @handle can look up your profile: display name, @handle, picture link and
+  join date. That is how adding a friend works. Profiles cannot be listed or searched in bulk.
+- Your friends can see your status while it is switched on.
+- Messages can be read by the two people in the conversation. You can delete a message you sent.
+  Removing a friend deletes the conversation for both of you.
+- Messages between friends are stored in the database and are not end to end encrypted. As the
+  owner of the Firebase project I am technically able to read anything in it.
 
 ## Listen along
 
-Sessions go through ntfy.sh, a public relay service run by someone else. While you host, your app
-publishes the song (title, artists, album, artwork link, length), the position, whether it is
-playing, and your @handle. Guests publish their @handle and picture link, song requests, votes and
-game answers.
+Sessions go through ntfy.sh, a public relay service run by someone else. Everything a session
+sends (the song, the position, @handles, requests, votes, game answers, a shared study timer) is
+encrypted on your computer with a key made from the session code, and only decrypted on the
+computers of people who have the code. The relay sees a meaningless channel name, how big the
+messages are and when they are sent, and the IP addresses of the people in the session. It cannot
+read them.
 
-This traffic is protected in transit by HTTPS but is not encrypted beyond that. The session code is
-the only key: anyone who has it can read the session and post to it. While you host, the code is
-also visible to your Cadence friends so they can join. The app asks the relay for the last twelve
-hours of a session's messages; how long ntfy.sh actually keeps them is up to ntfy.sh. You can point
-Cadence at your own ntfy server (see the README).
+The session code is the key. Anyone you give it to can read the session and take part, so share it
+like an invite. While you host, your friends can see the code in your status so they can join;
+"Friends can see and join" in the session tab switches that off.
+
+One exception: if you join a host who is still on an older version of Cadence, that session is not
+encrypted, and the app tells you so.
 
 ## What is not collected
 
 - No usage analytics, telemetry or crash reports of any kind.
 - No advertising identifiers.
 - No list of what you listen to, other than the single lookups above and the status your friends
-  see while you are signed in.
+  see while it is switched on.
 - Your statistics and recaps are computed on your computer and stay there unless you send one.
 
 ## Deleting your data
 
-- **On your computer:** delete the data folder named above.
+- **Your account:** Settings, Account, "Delete account". It deletes your status, friendships,
+  friend requests, every conversation you are in with its messages, your invite records, your
+  profile, your @handle, and then the sign in record itself. Google may ask you to sign in once
+  more to confirm the last step. Your @handle becomes free for someone else.
+- **A message:** Delete, on a message you sent.
+- **Your statistics:** Settings, Account, "Delete my listening statistics".
+- **Everything on your computer:** delete the data folder named above.
 - **Signing out** removes your status from the cloud and the sign in token from your computer.
   It does not delete your account.
-- **Your account:** this version has no delete button. The next version adds "Delete account" in
-  Settings, which removes everything the cloud holds about you. If you need an account removed
-  before then, ask in the Discord or open an issue on GitHub with your @handle.
 
 ## Children
 
-Cadence is not aimed at children under 13.
+Cadence is not aimed at children under 13 and I do not knowingly keep accounts for them.
 
 ## Changes
 
@@ -159,22 +182,3 @@ If what the app does with data changes, this page changes with it and the date a
 ## Contact
 
 The Discord (https://discord.gg/DA5NeAxdhy) or an issue at https://github.com/MowkE/cadence.
-
-## What the next version changes
-
-These are built and tested, and ship with the next release. This page will be updated the same day.
-
-- **Delete account** in Settings removes your status, friendships, requests, conversations, invite
-  records, profile, @handle and the sign in record. "Delete my listening statistics" clears the
-  local statistics.
-- **Profiles can no longer be listed.** They can only be looked up one at a time by @handle. This
-  part is already live, because it is a rule on the server.
-- **A switch for "Show friends what I am playing"**, and the status is deleted when you quit.
-- **You can delete a message you sent**, and removing a friend deletes the conversation for both.
-- **Listen along is encrypted end to end** with a key made from the session code, so the relay
-  cannot read it. A switch keeps the session code out of your status while you host.
-- **Sign in tokens are encrypted** with the system's secure storage on Windows and Linux. On Mac
-  they stay a file only your user account can read, because the Mac keychain asks an unsigned app
-  for your password after every update.
-- **Modes** (a study timer, pings from your own coding tools) keep their data on your computer. A
-  shared study timer travels through the same encrypted listen along channel.

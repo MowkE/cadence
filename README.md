@@ -160,7 +160,7 @@ Share your music with a friend who also has Cadence:
 
 **Song requests:** guests paste a Spotify song link (Spotify → Share → Copy Song Link) or press **Request what I'm playing**. The host sees the request with album art and who asked, and can **▶ play it now**, **＋ queue it** (Web API only), or **✕ pass** — guests get told which happened.
 
-How it works: your overlay publishes tiny "state" messages (track, position, playing) to a randomly named topic on [ntfy.sh](https://ntfy.sh), a public relay, only when something changes. Never your audio. Guests subscribe to that topic. In this version it is not encrypted beyond HTTPS and anyone with the code can follow, so share it like a party invite. The next version encrypts sessions end to end. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
+How it works: your overlay publishes tiny "state" messages (track, position, playing) through [ntfy.sh](https://ntfy.sh), a public relay, only when something changes. Never your audio. Every message is encrypted on your computer with a key made from the session code, so the relay cannot read it. Anyone with the code can follow, so share it like a party invite. A guest on an older version of Cadence cannot join a host on this one until they update. Self-hosting? Point Cadence at your own ntfy server by adding `{ "relay": "https://ntfy.example.com" }` to `settings.json` in the app's data folder (Mac: `~/Library/Application Support/spotify-overlay/`, Windows: `%APPDATA%\spotify-overlay\`) or setting `CADENCE_RELAY`.
 
 ## Accounts & friends
 
@@ -183,10 +183,11 @@ The short version. The full account, written from an audit of the code, is in [P
 - **No analytics, telemetry, crash reports or ads.** Nothing reports how you use Cadence, and nothing is sold.
 - **Lyrics lookups.** Each song's title, artist, album and length go to [LRCLIB](https://lrclib.net) to find lyrics (Genius only when LRCLIB has none). Artwork lookups go to Apple and Deezer for players that do not supply it.
 - **What it reads on your computer.** The song that is playing, and how bright the screen is behind the overlay (a tiny picture that is measured and thrown away, never saved or sent). No keystrokes, no audio, no browsing history.
-- **Accounts.** Google sign in gives Cadence your name, email and picture. The cloud keeps your profile, friends, messages and the song you are playing now, which your friends can see. Your email is not stored in the database.
-- **Listen along** goes through a public relay. In this version it is not encrypted and anyone with the session code can see what the session plays. The next version encrypts it end to end.
+- **Accounts.** Google sign in gives Cadence your name, email and picture. The cloud keeps your profile, friends and messages. Your email is not stored in the database, and profiles cannot be listed, only looked up by @handle.
+- **What you are playing** is shown to your friends while "Show friends what I am playing" is on. Switch it off in Settings, Account. It is cleared when you quit.
+- **Listen along is encrypted end to end** with a key made from the session code. The relay cannot read it. Whoever has the code can.
 - **Statistics** (the listening card, recaps) are worked out and kept on your computer. They leave only when you send one to a friend.
-- **Deleting.** Delete the app's data folder to wipe your computer. This version has no button to delete an account; the next one does. Until then, ask in the Discord or open an issue with your @handle.
+- **Deleting.** Settings, Account has "Delete account", which removes everything the cloud holds about you, and "Delete my listening statistics". You can delete a message you sent, and removing a friend deletes the conversation.
 
 ## Updates
 

@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadence downloads</title>
+<link rel="icon" href="./media/icon.png">
+<!--
+  A count of Cadence downloads. Each time the page loads it asks GitHub for the public release list of
+  MowkE/cadence and adds up the installer files, and it links to the same numbers on GitHub so anyone
+  can check them. Update check files (.yml) and patch files (.blockmap) are left out, and the page
+  says how many of those there were.
+
+  One part is not live. The installers of the oldest versions were removed from GitHub, and GitHub
+  drops a file's count when the file goes. Cadence had recorded those counts first (the app keeps a
+  running record for exactly this), and that figure is EARLIER below. The
+  page says plainly that this part cannot be checked on GitHub today. Raise EARLIER only when more
+  installers are removed, by the count the app recorded for them.
+-->
+<style>
+  /* The paper, Inter and sage of the cards inside Cadence, same as the sign in page */
+  :root {
+    color-scheme: light;
+    --page: #f5f3ea; --card: #fbfaf4; --rule: #e4e5db; --line: #d6dacb; --field: #f1f3eb;
+    --ink: #2f3a2b; --text: #4a5547; --muted: #7b8375;
+    --accent: #3e604b; --warn: #a5562b; --focus: #648970;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #151815; --card: #1c201d; --rule: #2d342e; --line: #3b443c; --field: #252b26;
+      --ink: #f2f0e6; --text: #c6cabb; --muted: #98a091;
+      --accent: #a3c596; --warn: #e6a078; --focus: #a3c596;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; padding: clamp(20px, 5vw, 56px) 20px 64px;
+    background: var(--page); color: var(--text);
+    font: 15px/1.55 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 2px; }
+  .home { display: inline-block; margin-bottom: 28px; color: var(--muted); font-size: 13px; text-decoration: none; }
+  .home:hover { color: var(--ink); }
+  h1 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 600; letter-spacing: 0; }
+  h2 { margin: 44px 0 12px; color: var(--ink); font-size: 15px; font-weight: 600; }
+  p { margin: 0 0 10px; max-width: 62ch; }
+  .total { margin: 6px 0 2px; color: var(--ink); font-size: clamp(64px, 16vw, 132px); font-weight: 650; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .since { color: var(--muted); }
+  .split { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 28px 0 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .split div { padding: 14px 16px 14px 0; }
+  .split div + div { padding-left: 16px; border-left: 1px solid var(--rule); }
+  .split b { display: block; color: var(--ink); font-size: 26px; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .split span { color: var(--muted); font-size: 13px; }
+  .stamp { margin-top: 12px; color: var(--muted); font-size: 13px; }
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 2px; background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 14px; text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  thead th { color: var(--muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--line); background: var(--field); position: sticky; top: 0; }
+  tbody tr + tr td { border-top: 1px solid var(--rule); }
+  tbody td:first-child { color: var(--ink); font-weight: 600; }
+  tbody td:last-child { color: var(--ink); font-weight: 600; }
+  ul { margin: 0; padding-left: 18px; max-width: 62ch; }
+  li { margin: 0 0 8px; }
+  .problem { margin: 18px 0 0; padding: 12px 14px; border: 1px solid var(--warn); border-radius: 2px; color: var(--ink); }
+  .quiet { opacity: 0.35; }
+  .parts { margin-top: 12px; }
+  tbody tr.gone td { color: var(--muted); font-weight: 400; }
+  tbody tr.gone td:last-child { color: var(--ink); font-weight: 600; }
+  @media (max-width: 560px) { .split { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split div:nth-child(3) { padding-left: 0; border-left: 0; } .split div:nth-child(n+3) { border-top: 1px solid var(--rule); } .split b { font-size: 21px; } th, td { padding: 8px 10px; } }
+</style>
+</head>
+<body>
+<main>
+  <a class="home" href="./index.html">Cadence</a>
+  <h1>Cadence downloads</h1>
+  <div class="total quiet" id="total" aria-live="polite">0</div>
+  <p class="since" id="since">Installer downloads on GitHub</p>
+
+  <div class="split" aria-label="Downloads by system">
+    <div><b class="quiet" id="win">0</b><span>Windows</span></div>
+    <div><b class="quiet" id="mac">0</b><span>Mac</span></div>
+    <div><b class="quiet" id="linux">0</b><span>Linux</span></div>
+    <div><b class="quiet" id="earlier">0</b><span>Oldest versions</span></div>
+  </div>
+  <p class="parts" id="parts"></p>
+  <p class="stamp" id="stamp">Asking GitHub</p>
+  <p class="problem" id="problem" hidden>GitHub did not answer just now. The same numbers are on <a href="https://github.com/MowkE/cadence/releases">the releases page</a>. Loading this page again in a few minutes usually works.</p>
+
+  <h2>Every version</h2>
+  <div class="wrap">
+    <table>
+      <thead><tr><th scope="col">Version</th><th scope="col">Released</th><th scope="col">Windows</th><th scope="col">Mac</th><th scope="col">Linux</th><th scope="col">Total</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="6" style="text-align:left;color:var(--muted)">Loading</td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>How this is counted</h2>
+  <ul>
+    <li>The live part is read from GitHub each time this page loads. It adds up the installer files of every public release, which are the .exe, .dmg and .AppImage files.</li>
+    <li id="gone">GitHub drops a file's count when the file is deleted. The installers of the oldest versions were removed, so their downloads are the count Cadence recorded before that. That part cannot be checked on GitHub today.</li>
+    <li id="left">Update check files and patch files are left out.</li>
+    <li>A download is not a person. Someone who installs several versions is counted once for each.</li>
+    <li>You can check it yourself on <a href="https://github.com/MowkE/cadence/releases">the releases page</a> or in <a href="https://api.github.com/repos/MowkE/cadence/releases?per_page=100">the same list straight from GitHub</a>, where each file has a download_count.</li>
+  </ul>
+</main>
+<script>
+(function () {
+    'use strict';
+    var REPO = 'MowkE/cadence', API = 'https://api.github.com/repos/' + REPO + '/releases?per_page=100';
+    // Downloads of installers that are no longer on GitHub, as Cadence recorded them before they were removed
+    var EARLIER = 394;
+    var $ = function (id) { return document.getElementById(id); };
+    var num = function (n) { return n.toLocaleString('en-US'); };
+    var day = function (iso) { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+    // Which system an installer is for, or nothing for the files that are not installers
+    function system(name) {
+        var n = name.toLowerCase();
+        if (/\.(blockmap|yml|yaml)$/.test(n)) return null;
+        if (/\.(exe|msi)$/.test(n)) return 'win';
+        if (/\.(dmg|pkg)$/.test(n)) return 'mac';
+        if (/\.(appimage|deb|rpm)$/.test(n)) return 'linux';
+        return null;
+    }
+    function releases(page, sofar) {
+        return fetch(API + '&page=' + page, { headers: { Accept: 'application/vnd.github+json' } }).then(function (r) {
+            if (!r.ok) throw new Error('GitHub answered ' + r.status);
+            return r.json();
+        }).then(function (list) {
+            var all = sofar.concat(list);
+            return list.length === 100 ? releases(page + 1, all) : all;
+        });
+    }
+    function show(list) {
+        var sum = { win: 0, mac: 0, linux: 0 }, other = 0, rows = [], gone = [], first = null;
+        list.filter(function (r) { return !r.draft; }).forEach(function (r) {
+            var row = { tag: r.tag_name, at: r.published_at, win: 0, mac: 0, linux: 0, files: 0 };
+            (r.assets || []).forEach(function (a) { var s = system(a.name); if (s) { row[s] += a.download_count; sum[s] += a.download_count; row.files++; } else other += a.download_count; });
+            // a version whose installers were removed has nothing to count on GitHub any more
+            (row.files ? rows : gone).push(row);
+            if (r.published_at && (!first || r.published_at < first)) first = r.published_at;
+        });
+        var live = sum.win + sum.mac + sum.linux, total = live + EARLIER;
+        // the oldest versions as one line, named from the first of them to the last
+        var span = '';
+        if (gone.length) { var byDate = gone.slice().sort(function (a, b) { return a.at < b.at ? -1 : 1; }); span = byDate[0].tag + (gone.length > 1 ? ' to ' + byDate[byDate.length - 1].tag : ''); }
+        $('total').textContent = num(total); $('win').textContent = num(sum.win); $('mac').textContent = num(sum.mac); $('linux').textContent = num(sum.linux); $('earlier').textContent = num(EARLIER);
+        ['total', 'win', 'mac', 'linux', 'earlier'].forEach(function (id) { $(id).classList.remove('quiet'); });
+        $('since').textContent = 'Installer downloads' + (first ? ' since ' + day(first) : '') + ', across ' + (rows.length + gone.length) + ' versions';
+        $('parts').textContent = num(live) + ' are counted live from GitHub. ' + num(EARLIER) + ' are from ' + (span || 'the oldest versions') + ', recorded before those installers were removed from GitHub.';
+        var now = new Date();
+        $('stamp').textContent = 'Read from GitHub at ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' on ' + day(now.toISOString());
+        $('gone').textContent = 'GitHub drops a file\'s count when the file is deleted. The installers of ' + (span || 'the oldest versions') + ' were removed, so their ' + num(EARLIER) + ' downloads are the count Cadence recorded before that. That part cannot be checked on GitHub today.';
+        $('left').textContent = 'Update check files and patch files are left out. They were fetched ' + num(other) + ' times, mostly by the app looking for a new version.';
+        var body = $('rows'); body.textContent = '';
+        var line = function (cells, cls) { var tr = document.createElement('tr'); if (cls) tr.className = cls; cells.forEach(function (text) { var td = document.createElement('td'); td.textContent = text; tr.appendChild(td); }); body.appendChild(tr); };
+        rows.forEach(function (r) { line([r.tag, r.at ? day(r.at) : '', num(r.win), num(r.mac), num(r.linux), num(r.win + r.mac + r.linux)]); });
+        if (EARLIER) line([span || 'Oldest versions', 'Installers removed', '', '', '', num(EARLIER)], 'gone');
+    }
+    releases(1, []).then(show).catch(function () {
+        $('problem').hidden = false; $('stamp').textContent = 'No answer from GitHub';
+        $('rows').innerHTML = '<tr><td colspan="6" style="text-align:left;color:var(--muted)">Nothing to show</td></tr>';
+    });
+})();
+</script>
+</body>
+</html>
